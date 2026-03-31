@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a3a5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="TI Técnico">
+<title>Painel Técnico — Chamados T.I.</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#222;min-height:100vh}
+:root{--azul:#1a3a5c;--azul2:#245080;--verde:#2e7d32;--laranja:#e65100;--verm:#c62828;--amarelo:#f9a825}
+header{background:var(--azul);color:#fff;padding:13px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+header h1{font-size:1rem;font-weight:700;flex:1}
+#clock{font-size:.75rem;opacity:.7}
+.online-dot{width:9px;height:9px;border-radius:50%;background:#4caf50;flex-shrink:0}
+.online-dot.off{background:#ef5350}
+nav{display:flex;background:#fff;border-bottom:2px solid #dde3ea;padding:0 12px;overflow-x:auto}
+.nav-btn{padding:10px 16px;cursor:pointer;font-size:.81rem;font-weight:600;border:none;background:none;color:#666;border-bottom:3px solid transparent;white-space:nowrap}
+.nav-btn.active{color:var(--azul);border-bottom-color:var(--azul)}.nav-btn:hover{color:var(--azul)}
+.page{display:none;padding:14px}.page.active{display:block}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.sc{background:#fff;border-radius:8px;padding:11px 16px;flex:1;min-width:100px;border-left:4px solid var(--azul);box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.sc .n{font-size:1.6rem;font-weight:700;color:var(--azul)}.sc .l{font-size:.72rem;color:#777;margin-top:1px}
+.sc.g{border-color:var(--verde)}.sc.g .n{color:var(--verde)}
+.sc.r{border-color:var(--verm)}.sc.r .n{color:var(--verm)}
+.sc.o{border-color:var(--laranja)}.sc.o .n{color:var(--laranja)}
+.sc.y{border-color:var(--amarelo)}.sc.y .n{color:var(--amarelo)}
+.toolbar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.toolbar input,.toolbar select{padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:.81rem;background:#fff}
+.toolbar input{flex:1;min-width:140px}
+.btn{padding:7px 14px;border:none;border-radius:6px;cursor:pointer;font-size:.81rem;font-weight:600;transition:.15s}
+.btn-blue{background:var(--azul);color:#fff}.btn-blue:hover{background:var(--azul2)}
+.btn-green{background:var(--verde);color:#fff}.btn-green:hover{background:#388e3c}
+.btn-red{background:var(--verm);color:#fff}.btn-red:hover{background:#b71c1c}
+.btn-gray{background:#eee;color:#333}.btn-gray:hover{background:#ddd}
+.btn-sm{padding:3px 8px;font-size:.72rem}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.07);font-size:.78rem}
+thead{background:var(--azul);color:#fff}
+th{padding:9px 7px;text-align:left;font-weight:600;white-space:nowrap}
+td{padding:7px;border-bottom:1px solid #eee;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f5f8fb}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700;white-space:nowrap}
+.b-CONCLUIDO{background:#e8f5e9;color:#2e7d32}.b-ABERTO{background:#fff3e0;color:#e65100}
+.b-EMANDAMENTO{background:#e3f2fd;color:#1565c0}.b-CANCELADO{background:#fce4ec;color:#c62828}
+.desc-c{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--azul)}
+.pag{display:flex;gap:4px;align-items:center;justify-content:flex-end;padding:8px 0;font-size:.78rem;color:#666;flex-wrap:wrap}
+.pag button{border:1px solid #ccc;background:#fff;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:.78rem}
+.pag button:disabled{opacity:.4;cursor:not-allowed}
+.pag button.active{background:var(--azul);color:#fff;border-color:var(--azul)}
+.novo-badge{background:#e53935;color:#fff;border-radius:50%;font-size:.65rem;font-weight:700;padding:1px 5px;margin-left:4px;display:none}
+.sync-badge{font-size:.7rem;background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:10px;margin-left:8px;font-weight:700;display:none}
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:16px}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:12px;padding:22px;width:100%;max-width:460px;box-shadow:0 8px 32px rgba(0,0,0,.25);max-height:92vh;overflow-y:auto}
+.modal h3{color:var(--azul);margin-bottom:12px;font-size:.98rem}
+.modal-field{margin-bottom:10px;font-size:.83rem}
+.modal-field b{color:#444;display:block;font-size:.75rem;margin-bottom:2px}
+.modal-field p{color:#222;line-height:1.5;word-break:break-word}
+.modal-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:16px}
+.form-row{margin-bottom:12px}
+.form-row label{display:block;font-size:.79rem;font-weight:700;color:#555;margin-bottom:4px}
+.form-row input,.form-row select,.form-row textarea{width:100%;padding:9px 11px;border:1px solid #ccc;border-radius:6px;font-size:.84rem;font-family:inherit}
+.form-row textarea{resize:vertical;min-height:70px}
+/* CAMPOS */
+.campos-wrap{max-width:1100px}
+.campos-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.campos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.cc{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-top:3px solid var(--azul)}
+.cc h3{font-size:.85rem;color:var(--azul);font-weight:700;margin-bottom:2px}
+.cc .sub{font-size:.71rem;color:#999;margin-bottom:8px}
+.tag-wrap{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px;min-height:22px}
+.tag{display:inline-flex;align-items:center;background:#e8eef5;color:#1a3a5c;border-radius:4px;padding:2px 7px;font-size:.71rem;font-weight:600;gap:3px}
+.tag .x{cursor:pointer;color:var(--verm);font-weight:900;line-height:1}
+.add-row{display:flex;gap:5px;margin-top:4px}
+.add-row input{flex:1;padding:5px 8px;border:1px solid #ccc;border-radius:5px;font-size:.78rem}
+.cc-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid #f0f0f0;align-items:center}
+.lbl-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.lbl-row input{flex:1;padding:5px 9px;border:1px solid #ddd;border-radius:5px;font-size:.83rem;font-weight:600;color:var(--azul)}
+.lbl-row input:focus{outline:none;border-color:var(--azul)}
+.save-campos-bar{position:sticky;bottom:0;background:#fff;border-top:2px solid #e0e7ef;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;box-shadow:0 -2px 10px rgba(0,0,0,.07)}
+.save-campos-bar p{font-size:.8rem;color:#666}
+/* DASH */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.dash-grid{grid-template-columns:1fr}}
+.dash-card{background:#fff;border-radius:8px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.dash-card h3{font-size:.84rem;color:var(--azul);margin-bottom:10px;font-weight:700}
+.bar-item{margin-bottom:6px}
+.bar-label{display:flex;justify-content:space-between;font-size:.73rem;color:#666;margin-bottom:2px}
+.bar-bg{background:#e8eef5;border-radius:4px;height:8px}
+.bar-fill{background:var(--azul);border-radius:4px;height:8px;transition:width .4s}
+.bar-fill.g{background:var(--verde)}.bar-fill.r{background:var(--verm)}.bar-fill.o{background:var(--laranja)}
+.kpi{background:#fff;border-radius:10px;padding:13px 16px;border-left:4px solid var(--azul);box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.kpi .kn{font-size:1.7rem;font-weight:800;color:var(--azul)}
+.kpi .kl{font-size:.72rem;color:#777;margin-top:1px}
+.kpi .ksub{font-size:.7rem;margin-top:3px;font-weight:600}
+.kpi.g{border-color:var(--verde)}.kpi.g .kn{color:var(--verde)}
+.kpi.r{border-color:var(--verm)}.kpi.r .kn{color:var(--verm)}
+.kpi.o{border-color:var(--laranja)}.kpi.o .kn{color:var(--laranja)}
+.kpi.y{border-color:var(--amarelo)}.kpi.y .kn{color:var(--amarelo)}
+.kpi.p{border-color:#7b1fa2}.kpi.p .kn{color:#7b1fa2}
+.rank-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:#f8f9fb}
+.rank-pos{width:24px;height:24px;border-radius:50%;background:var(--azul);color:#fff;font-size:.7rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rank-pos.p1{background:#f9a825}.rank-pos.p2{background:#90a4ae}.rank-pos.p3{background:#a1887f}
+.rank-nome{font-size:.78rem;font-weight:700;color:#333;flex:1}
+.rank-num{font-size:.78rem;font-weight:800;color:var(--azul)}
+.empty{text-align:center;color:#bbb;padding:32px;font-size:.88rem}
+.realtime-badge{background:#e8f5e9;color:#2e7d32;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:8px}
+</style>
+</head>
+<body>
+<header>
+  <span class="online-dot" id="onlineDot"></span>
+  <h1>🖥️ Painel T.I. <span class="realtime-badge" id="rtBadge" style="display:none">● AO VIVO</span></h1>
+  <span id="clock"></span>
+</header>
+<nav>
+  <button class="nav-btn active" onclick="goPage('dashboard')">📊 Dashboard</button>
+  <button class="nav-btn" onclick="goPage('lista')">📋 Chamados <span class="novo-badge" id="novoBadge"></span></button>
+  <button class="nav-btn" onclick="goPage('campos')">⚙️ Campos</button>
+  <button class="nav-btn" onclick="goPage('relatorios')">📈 Relatórios</button>
+  <button class="nav-btn" onclick="goPage('exportar')">📄 Exportar</button>
+</nav>
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page active">
+  <div class="stats" id="stats"></div>
+  <div class="dash-grid" id="charts"></div>
+</div>
+
+<!-- LISTA -->
+<div id="page-lista" class="page">
+  <div class="toolbar">
+    <input type="text" id="busca" placeholder="🔍 Buscar..." oninput="renderTabela()">
+    <select id="fSit" onchange="renderTabela()"><option value="">Todas Situações</option><option>ABERTO</option><option>EM ANDAMENTO</option><option>CONCLUIDO</option><option>CANCELADO</option></select>
+    <select id="fPrio" onchange="renderTabela()"><option value="">Todas Prio.</option><option value="🔴">🔴 Emergencial</option><option value="🟠">🟠 Urgente</option><option value="🟡">🟡 Normal</option><option value="🟢">🟢 Demanda</option></select>
+    <select id="fSetor" onchange="renderTabela()"><option value="">Todos Setores</option></select>
+  </div>
+  <div class="table-wrap">
+    <table><thead><tr><th>#</th><th>Data</th><th>Nome</th><th>Setor</th><th>Tipo</th><th>Descrição</th><th>Prioridade</th><th>Situação</th><th>Tempo</th><th>Por</th><th>Ação</th></tr></thead>
+    <tbody id="tbody"></tbody></table>
+    <div id="emptyMsg" style="display:none" class="empty">Nenhum chamado encontrado.</div>
+  </div>
+  <div class="pag" id="paginacao"></div>
+</div>
+
+<!-- CAMPOS -->
+<div id="page-campos" class="page">
+  <div class="campos-wrap">
+    <div class="campos-header">
+      <div>
+        <h2 style="color:var(--azul);font-size:1rem">⚙️ Personalizar Campos</h2>
+        <p style="font-size:.76rem;color:#888;margin-top:3px">Alterações são salvas e sincronizadas automaticamente com o app dos colaboradores.</p>
+      </div>
+      <button class="btn btn-blue" onclick="abrirModalCampo()">➕ Novo Campo</button>
+    </div>
+    <div class="campos-grid" id="camposGrid"></div>
+    <div class="save-campos-bar">
+      <p>💡 Clique em "Salvar" para publicar as alterações para todos os colaboradores.</p>
+      <button class="btn btn-green" onclick="salvarCampos()">☁️ Salvar e Publicar</button>
+    </div>
+  </div>
+</div>
+
+<!-- RELATÓRIOS -->
+<div id="page-relatorios" class="page">
+  <div style="max-width:1100px">
+
+    <!-- Filtros do relatório -->
+    <div style="background:#fff;border-radius:10px;padding:14px 18px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:.82rem;font-weight:700;color:#555">📅 Período:</span>
+      <select id="rPeriodo" onchange="atualizarRelatorio()" style="padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:.81rem;background:#fff">
+        <option value="7">Últimos 7 dias</option>
+        <option value="15">Últimos 15 dias</option>
+        <option value="30" selected>Últimos 30 dias</option>
+        <option value="90">Últimos 90 dias</option>
+        <option value="0">Todo o período</option>
+      </select>
+      <select id="rTecnico" onchange="atualizarRelatorio()" style="padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:.81rem;background:#fff">
+        <option value="">Todos os Técnicos</option>
+      </select>
+      <select id="rSetor2" onchange="atualizarRelatorio()" style="padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:.81rem;background:#fff">
+        <option value="">Todos os Setores</option>
+      </select>
+      <button class="btn btn-blue" onclick="exportarRelPDF()" style="margin-left:auto">🖨️ Exportar PDF</button>
+    </div>
+
+    <!-- KPIs -->
+    <div id="kpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:14px"></div>
+
+    <!-- Gráficos linha 1 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+        <div style="font-size:.84rem;font-weight:700;color:var(--azul);margin-bottom:10px">📅 Chamados por Dia</div>
+        <canvas id="cPorDia" height="180"></canvas>
+      </div>
+      <div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+        <div style="font-size:.84rem;font-weight:700;color:var(--azul);margin-bottom:10px">🍩 Distribuição por Situação</div>
+        <canvas id="cSituacao" height="180"></canvas>
+      </div>
+    </div>
+
+    <!-- Gráficos linha 2 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+        <div style="font-size:.84rem;font-weight:700;color:var(--azul);margin-bottom:10px">🏢 Chamados por Setor</div>
+        <canvas id="cSetor" height="220"></canvas>
+      </div>
+      <div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+        <div style="font-size:.84rem;font-weight:700;color:var(--azul);margin-bottom:10px">🔧 Tipos de Solicitação</div>
+        <canvas id="cTipo" height="220"></canvas>
+      </div>
+    </div>
+
+    <!-- Gráficos linha 3 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+        <div style="font-size:.84rem;font-weight:700;color:var(--azul);margin-bottom:10px">⚡ Prioridades</div>
+        <canvas id="cPrioridade" height="180"></canvas>
+      </div>
+      <div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+        <div style="font-size:.84rem;font-weight:700;color:var(--azul);margin-bottom:10px">👨‍💻 Chamados por Técnico</div>
+        <canvas id="cTecnico" height="180"></canvas>
+      </div>
+    </div>
+
+    <!-- Ranking colaboradores -->
+    <div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:12px">
+      <div style="font-size:.84rem;font-weight:700;color:var(--azul);margin-bottom:12px">🏆 Top Colaboradores que mais abriram chamados</div>
+      <div id="rankColaboradores" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px"></div>
+    </div>
+
+    <!-- Tempo médio por setor -->
+    <div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:12px">
+      <div style="font-size:.84rem;font-weight:700;color:var(--azul);margin-bottom:10px">⏱️ Tempo Médio de Resolução por Setor</div>
+      <canvas id="cTempoSetor" height="140"></canvas>
+    </div>
+
+  </div>
+</div>
+
+<!-- EXPORTAR -->
+<div id="page-exportar" class="page">
+  <div style="background:#fff;border-radius:10px;padding:20px;max-width:600px;box-shadow:0 1px 6px rgba(0,0,0,.09)">
+    <h2 style="color:var(--azul);font-size:1rem;margin-bottom:14px">📄 Exportar Dados</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn btn-blue" onclick="exportarPDF()">🖨️ PDF</button>
+      <button class="btn btn-green" onclick="exportarCSV()">📊 CSV</button>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:.82rem;font-weight:700;color:#444;display:block;margin-bottom:6px">Filtrar por período:</label>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <input type="date" id="dtIni" style="padding:7px;border:1px solid #ccc;border-radius:6px;font-size:.83rem;width:auto">
+        <input type="date" id="dtFim" style="padding:7px;border:1px solid #ccc;border-radius:6px;font-size:.83rem;width:auto">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALHE/STATUS -->
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)fecharModal()">
+  <div class="modal">
+    <h3 id="mTit"></h3>
+    <div id="mInfo"></div>
+    <hr style="margin:12px 0;border-color:#eee">
+    <div class="form-row"><label>Alterar Situação</label>
+      <select id="mSit">
+        <option>ABERTO</option><option>EM ANDAMENTO</option><option>CONCLUIDO</option><option>CANCELADO</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Solucionado Por</label><select id="mSol"></select></div>
+    <div class="modal-btns">
+      <button class="btn btn-red btn-sm" onclick="excluirChamado()" style="margin-right:auto">🗑️ Excluir</button>
+      <button class="btn btn-gray" onclick="fecharModal()">Fechar</button>
+      <button class="btn btn-blue" onclick="salvarModal()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOVO CAMPO -->
+<div class="modal-bg" id="mCampoBg" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <h3>➕ Novo Campo</h3>
+    <div class="form-row"><label>Nome *</label><input id="ncLbl" type="text" placeholder="Ex: Filial, Patrimônio..."></div>
+    <div class="form-row"><label>Tipo *</label>
+      <select id="ncTipo" onchange="document.getElementById('ncOpArea').style.display=this.value==='select'?'block':'none'">
+        <option value="select">Lista de opções (dropdown)</option>
+        <option value="text">Texto livre</option>
+        <option value="textarea">Texto longo</option>
+      </select>
+    </div>
+    <div id="ncOpArea" class="form-row"><label>Opções (uma por linha) *</label><textarea id="ncOps" rows="5" placeholder="Opção 1&#10;Opção 2"></textarea></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><input type="checkbox" id="ncObrig" checked style="width:auto"><label for="ncObrig" style="font-size:.83rem;font-weight:600;margin:0">Obrigatório</label></div>
+    <div class="modal-btns">
+      <button class="btn btn-gray" onclick="document.getElementById('mCampoBg').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-blue" onclick="criarCampo()">✅ Criar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc, setDoc, getDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyAGkaCk_ot9tqgeH1c1E14ZAt0r2e_u5N8",
+  authDomain: "chamados-ti-ng.firebaseapp.com",
+  projectId: "chamados-ti-ng",
+  storageBucket: "chamados-ti-ng.firebasestorage.app",
+  messagingSenderId: "901816146090",
+  appId: "1:901816146090:web:ebd77c71f015bfc73598d3"
+};
+// ============================================================
+
+let dados=[], pag=1, POR_PAG=15, modalDocId=null, db=null;
+let campos = [
+  {id:'nome',label:'Nome / Identificação',type:'select',required:true,locked:true,
+   options:['ALEX CASTELO','AMANDA FAVACHO','AMANDA PIEDADE','ANA PAULA','ANDREIA DAMASCENO','BIANCA NORONHA','BRUNA COSTA','BRUNO CAVALCANTE','CAMILA DONATO','CARLOS COSTA','CLAUDETE CONCEIÇÃO','CLEIDE AMANAJÁS','DANIELLE ROSA','DAVID JESUS','DAYANE ALMEIDA','DÉBORA BORGES','EDILSON JUNIOR','EDSON DUARTE','FRANCY BRITO','GEORGINA ULIANA','GIOVANNI CUNHA','GIRLEIDE SILVA','GUSTAVO SUP.TECNICO','HUATILA RODRIGUES','ICARO SANTOS','INGREDY SILVA','ISAIAS MALCHER','IZABELA FERREIRA','JAMILY CRUZ','JOYSE SENA','JOZIANA ROSARIO','JULIANA AROUCA','KAREN RESENDE','KELLY PASSOS','LABELLE PEREIRA','LETICIA ESCAMILLA','LUCIENE RODRIGUES','MARCUS ARAUJO','MARCOS DA SILVA','MARCOS SENA','MARIANA FRAZÃO','NAIANE SODRE','NATAN RIBEIRO','ORLANDO LIMA','PAMELA MIRANDA','RAIMUNDA BARBÁRA','RAYLENE LOBATO','ROBERTO NASCIMENTO','SIMONE SANTOS','SOCORRO AFONSO','SUELLEN MAXIMIANO','TAINÁ CASTRO','TAYNARA ARCANJO','TIAGO NASCIMENTO','VALERIA SOUZA','WARLEN','MALU MATOS']},
+  {id:'setor',label:'Setor / Departamento',type:'select',required:true,locked:true,
+   options:['Administrativo','Comercial','Compras/Suprimentos','DP/RH','Faturamento','Financeiro','Gerência','Manutenção','Pós Venda','SESMT','Transporte','Outro']},
+  {id:'tipo',label:'Tipo de Solicitação',type:'select',required:true,locked:true,
+   options:['Problema Técnico','Suporte (Ajuda)','Instalação (Aplicativos, Assinaturas, Certificados e etc...)','Solicitação de Acesso','Problema com Impressora','Suporte ao SISLOC','Criação de Usuário','Suporte a CFTV (Câmeras)']},
+  {id:'status',label:'Prioridade',type:'select',required:true,locked:true,
+   options:['🔴 Emergencial (Imediato)','🟠 Urgente (de 30min à 1h)','🟡 Normal (de 1h à 3h)','🟢 Demanda (Melhoria sem prazo imediato)']},
+  {id:'desc',label:'Descrição do Problema',type:'textarea',required:true,locked:true},
+  {id:'sol',label:'Solucionado Por',type:'select',required:false,locked:true,options:['DAVID','TIJET']},
+];
+
+// RELÓGIO
+function tick(){const n=new Date();document.getElementById('clock').textContent=n.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'})+' '+n.toLocaleTimeString('pt-BR');}
+tick();setInterval(tick,1000);
+
+// FIREBASE
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  document.getElementById('onlineDot').classList.remove('off');
+  document.getElementById('rtBadge').style.display = 'inline';
+
+  // Carrega campos salvos do Firestore
+  getDoc(doc(db,'config','campos')).then(snap=>{
+    if(snap.exists()&&snap.data().campos) { campos=snap.data().campos; renderCampos(); }
+  });
+
+  // Listener tempo real dos chamados
+  let primeiraVez=true, totalAnterior=0;
+  onSnapshot(query(collection(db,'chamados'),orderBy('criadoEm','desc')), snap=>{
+    dados=snap.docs.map(d=>({_id:d.id,...d.data()}));
+    if(!primeiraVez&&dados.length>totalAnterior){
+      const diff=dados.length-totalAnterior;
+      showToast(`🔔 ${diff} novo(s) chamado(s)!`);
+      const b=document.getElementById('novoBadge');b.style.display='inline';b.textContent=diff;
+      if(Notification.permission==='granted') new Notification('Novo Chamado T.I.',{body:`${diff} novo(s) chamado(s)`});
+    }
+    totalAnterior=dados.length;primeiraVez=false;
+    popularFiltroSetor();renderTabela();renderDash();
+  });
+  if('Notification' in window&&Notification.permission==='default') Notification.requestPermission();
+} catch(e){
+  document.getElementById('onlineDot').classList.add('off');
+  showToast('❌ Configure o Firebase!','#c62828');
+}
+
+// HELPERS
+function fmtDt(ts){if(!ts)return '';try{const d=ts.toDate?ts.toDate():new Date(ts);return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR').slice(0,5);}catch(e){return '';}}
+function calcTempo(ini,fim){
+  if(!ini||!fim)return '';
+  let total=0,atual=new Date(ini.toDate?ini.toDate():ini);const fimD=new Date(fim.toDate?fim.toDate():fim);
+  while(atual<fimD){const d=atual.getDay();if(d===0){atual.setDate(atual.getDate()+1);atual.setHours(8,0,0,0);continue;}if(d===6){atual.setDate(atual.getDate()+2);atual.setHours(8,0,0,0);continue;}const h=atual.getHours();if(h<8){atual.setHours(8,0,0,0);continue;}if(h===12){atual.setHours(13,0,0,0);continue;}if(h>=18){atual.setDate(atual.getDate()+1);atual.setHours(8,0,0,0);continue;}let prox=new Date(atual);prox.setHours(h>=13?18:12,0,0,0);if(fimD<prox){total+=fimD-atual;break;}else{total+=prox-atual;atual=prox;}}
+  return Math.floor(total/3600000)+'h '+Math.floor((total%3600000)/60000)+'m';
+}
+
+// NAV
+window.goPage=function(p){
+  document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(e=>e.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  const idx={dashboard:0,lista:1,campos:2,relatorios:3,exportar:4};
+  if(idx[p]!==undefined) document.querySelectorAll('.nav-btn')[idx[p]].classList.add('active');
+  if(p==='lista'){document.getElementById('novoBadge').style.display='none';renderTabela();}
+  if(p==='dashboard') renderDash();
+  if(p==='campos') renderCampos();
+  if(p==='relatorios') atualizarRelatorio();
+};
+
+// FILTROS
+function popularFiltroSetor(){
+  const set=[...new Set(dados.map(d=>d.setor).filter(Boolean))].sort();
+  const sel=document.getElementById('fSetor');const cur=sel.value;
+  sel.innerHTML='<option value="">Todos Setores</option>';
+  set.forEach(s=>{const o=document.createElement('option');o.textContent=s;if(s===cur)o.selected=true;sel.appendChild(o);});
+}
+function getFil(){
+  const b=document.getElementById('busca').value.toLowerCase();
+  const s=document.getElementById('fSit').value;
+  const pr=document.getElementById('fPrio').value;
+  const se=document.getElementById('fSetor').value;
+  return dados.filter(r=>{
+    const txt=Object.values(r).filter(v=>typeof v==='string').join(' ').toLowerCase();
+    return(!b||txt.includes(b))&&(!s||r.sit===s)&&(!pr||(r.status&&r.status.startsWith(pr)))&&(!se||r.setor===se);
+  });
+}
+function badgeSit(s){const k=(s||'').replace(/\s/g,'');return`<span class="badge b-${k}">${s||''}</span>`;}
+
+// TABELA
+function renderTabela(){
+  const fil=getFil(),tot=fil.length,tp=Math.max(1,Math.ceil(tot/POR_PAG));
+  if(pag>tp)pag=1;
+  const sl=fil.slice((pag-1)*POR_PAG,pag*POR_PAG);
+  const tb=document.getElementById('tbody');tb.innerHTML='';
+  document.getElementById('emptyMsg').style.display=sl.length?'none':'block';
+  sl.forEach((r,i)=>{
+    const n=(pag-1)*POR_PAG+i+1;
+    const numFmt = r.num ? '#'+String(r.num).padStart(5,'0') : String(n).padStart(5,'0');
+    tb.innerHTML+=`<tr style="cursor:pointer" onclick="verDetalhe('${r._id}')">
+      <td><b style="color:var(--azul)">${numFmt}</b></td><td style="white-space:nowrap;font-size:.72rem">${fmtDt(r.criadoEm)}</td>
+      <td><b>${r.nome||'—'}</b></td><td>${r.setor||''}</td>
+      <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.tipo||''}</td>
+      <td class="desc-c" title="${r.desc||''}">${r.desc||''}</td>
+      <td style="font-size:.72rem;white-space:nowrap">${r.status||''}</td>
+      <td>${badgeSit(r.sit)}</td>
+      <td>${r.res||'-'}</td><td>${r.sol||'-'}</td>
+      <td><button class="btn btn-blue btn-sm" onclick="event.stopPropagation();verDetalhe('${r._id}')">👁️</button></td>
+    </tr>`;
+  });
+  renderPag(tp,tot);renderStats();
+}
+function renderPag(tp,tot){
+  let h=`<button onclick="irPag(${pag-1})" ${pag===1?'disabled':''}>‹</button>`;
+  for(let i=1;i<=tp;i++){if(tp<=7||i===1||i===tp||Math.abs(i-pag)<=1)h+=`<button onclick="irPag(${i})" class="${i===pag?'active':''}">${i}</button>`;else if(Math.abs(i-pag)===2)h+=`<span>…</span>`;}
+  h+=`<button onclick="irPag(${pag+1})" ${pag===tp?'disabled':''}>›</button><span>${tot} chamado(s)</span>`;
+  document.getElementById('paginacao').innerHTML=h;
+}
+window.irPag=n=>{pag=n;renderTabela();};
+
+function renderStats(){
+  const tot=dados.length,conc=dados.filter(d=>d.sit==='CONCLUIDO').length;
+  const ab=dados.filter(d=>d.sit==='ABERTO').length,em=dados.filter(d=>d.sit==='EM ANDAMENTO').length;
+  const canc=dados.filter(d=>d.sit==='CANCELADO').length,emer=dados.filter(d=>d.status&&d.status.startsWith('🔴')).length;
+  document.getElementById('stats').innerHTML=`
+    <div class="sc"><div class="n">${tot}</div><div class="l">Total</div></div>
+    <div class="sc g"><div class="n">${conc}</div><div class="l">Concluídos</div></div>
+    <div class="sc o"><div class="n">${ab+em}</div><div class="l">Abertos/Andamento</div></div>
+    <div class="sc r"><div class="n">${emer}</div><div class="l">Emergenciais</div></div>
+    <div class="sc y"><div class="n">${canc}</div><div class="l">Cancelados</div></div>`;
+}
+
+function renderDash(){
+  renderStats();
+  const sC={},pC={'🔴':0,'🟠':0,'🟡':0,'🟢':0},tC={},siC={};
+  dados.forEach(d=>{if(d.setor)sC[d.setor]=(sC[d.setor]||0)+1;const p=d.status?d.status.slice(0,2):'';if(pC[p]!==undefined)pC[p]++;if(d.tipo)tC[d.tipo]=(tC[d.tipo]||0)+1;if(d.sit)siC[d.sit]=(siC[d.sit]||0)+1;});
+  const mS=Math.max(1,...Object.values(sC)),mT=Math.max(1,...Object.values(tC)),mP=Math.max(1,...Object.values(pC));
+  const pL={'🔴':'Emergencial','🟠':'Urgente','🟡':'Normal','🟢':'Demanda'},pCl={'🔴':'r','🟠':'o','🟡':'','🟢':'g'};
+  const bar=(k,v,max,cl='')=>`<div class="bar-item"><div class="bar-label"><span style="max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block">${k}</span><span>${v}</span></div><div class="bar-bg"><div class="bar-fill ${cl}" style="width:${(v/max*100).toFixed(0)}%"></div></div></div>`;
+  const bS=Object.entries(sC).sort((a,b)=>b[1]-a[1]).map(([k,v])=>bar(k,v,mS)).join('');
+  const bP=Object.entries(pC).map(([k,v])=>bar(`${k} ${pL[k]}`,v,mP,pCl[k])).join('');
+  const bT=Object.entries(tC).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k,v])=>bar(k,v,mT,'g')).join('');
+  const siCol={'CONCLUIDO':'g','ABERTO':'o','EM ANDAMENTO':'','CANCELADO':'r'};
+  const bSi=Object.entries(siC).map(([k,v])=>bar(k,v,Math.max(1,dados.length),siCol[k]||'')).join('');
+  document.getElementById('charts').innerHTML=`
+    <div class="dash-card"><h3>📁 Por Setor</h3>${bS}</div>
+    <div class="dash-card"><h3>📊 Por Situação</h3>${bSi}<br><h3>⚡ Por Prioridade</h3>${bP}</div>
+    <div class="dash-card" style="grid-column:1/-1"><h3>🔧 Por Tipo (Top 6)</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">${bT}</div></div>`;
+}
+
+// MODAL
+window.verDetalhe=function(id){
+  const r=dados.find(d=>d._id===id);if(!r)return;
+  modalDocId=id;
+  const numFmt = r.num ? '#'+String(r.num).padStart(5,'0') : '—';
+  document.getElementById('mTit').textContent=`${numFmt} — ${r.nome||''}`;
+  let info='';
+  [['Setor',r.setor],['Tipo',r.tipo],['Prioridade',r.status],['Abertura',fmtDt(r.criadoEm)],['Início atend.',fmtDt(r.inicio)],['Conclusão',fmtDt(r.conclusao)],['Tempo útil',r.res]].filter(([,v])=>v).forEach(([k,v])=>{info+=`<div class="modal-field"><b>${k}</b><p>${v}</p></div>`;});
+  info+=`<div class="modal-field"><b>Descrição</b><p>${r.desc||''}</p></div>`;
+  if(r.foto)info+=`<div class="modal-field"><b>Foto</b><p><a href="${r.foto}" target="_blank">Ver imagem</a></p></div>`;
+  document.getElementById('mInfo').innerHTML=info;
+  document.getElementById('mSit').value=r.sit||'ABERTO';
+  const solC=campos.find(c=>c.id==='sol');
+  const mSol=document.getElementById('mSol');
+  mSol.innerHTML='<option value="">— sem técnico —</option>';
+  (solC?solC.options:[]).forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;if(r.sol===t)o.selected=true;mSol.appendChild(o);});
+  document.getElementById('modalBg').classList.add('open');
+};
+window.fecharModal=()=>{document.getElementById('modalBg').classList.remove('open');modalDocId=null;};
+
+window.salvarModal=async function(){
+  if(!modalDocId||!db)return;
+  const r=dados.find(d=>d._id===modalDocId);if(!r)return;
+  const newSit=document.getElementById('mSit').value;
+  const newSol=document.getElementById('mSol').value;
+  const update={sit:newSit,sol:newSol};
+  const now=serverTimestamp();
+  if(newSit==='EM ANDAMENTO'&&!r.inicio) update.inicio=now;
+  if((newSit==='CONCLUIDO'||newSit==='CANCELADO')&&!r.conclusao){
+    update.conclusao=now;
+    if(newSit==='CONCLUIDO'&&r.inicio) update.res=calcTempo(r.inicio,new Date());
+  }
+  try{await updateDoc(doc(db,'chamados',modalDocId),update);fecharModal();showToast('✅ Chamado atualizado!');}
+  catch(e){showToast('❌ Erro ao salvar.','#c62828');}
+};
+
+window.excluirChamado=async function(){
+  if(!modalDocId||!db)return;
+  if(!confirm('Excluir este chamado?'))return;
+  try{await deleteDoc(doc(db,'chamados',modalDocId));fecharModal();showToast('🗑️ Excluído.','#555');}
+  catch(e){showToast('❌ Erro.','#c62828');}
+};
+
+// ──────────────────────────────
+// CAMPOS — com salvar no Firestore
+// ──────────────────────────────
+function renderCampos(){
+  const g=document.getElementById('camposGrid');g.innerHTML='';
+  campos.forEach((c,ci)=>{
+    const tipoTxt={select:'Lista de opções',text:'Texto livre',textarea:'Texto longo'}[c.type];
+    let h=`<div class="lbl-row"><input type="text" value="${c.label}" onchange="renomearCampo(${ci},this.value)" title="Editar nome"></div>`;
+    h+=`<div class="sub">Tipo: <b>${tipoTxt}</b> · ${c.required?'<span style="color:var(--verm)">Obrigatório</span>':'Opcional'}</div>`;
+    if(c.type==='select'){
+      h+='<div class="tag-wrap">'+(c.options||[]).map((o,oi)=>`<span class="tag">${o}<span class="x" onclick="remOpcao(${ci},${oi})">×</span></span>`).join('')+'</div>';
+      h+=`<div class="add-row"><input type="text" id="ao_${ci}" placeholder="Nova opção..." onkeydown="if(event.key==='Enter'){addOpcao(${ci});event.preventDefault();}"><button class="btn btn-blue btn-sm" onclick="addOpcao(${ci})">➕</button></div>`;
+    }
+    h+='<div class="cc-actions">';
+    h+=`<button class="btn btn-sm" style="background:#e3f2fd;color:#1565c0" onclick="toggleObrig(${ci})">${c.required?'✅ Obrig.':'⬜ Opcion.'}</button>`;
+    if(ci>0)h+=`<button class="btn btn-gray btn-sm" onclick="mover(${ci},-1)">↑</button>`;
+    if(ci<campos.length-1)h+=`<button class="btn btn-gray btn-sm" onclick="mover(${ci},1)">↓</button>`;
+    if(!c.locked)h+=`<button class="btn btn-red btn-sm" onclick="remCampo(${ci})">🗑️</button>`;
+    else h+=`<span style="font-size:.7rem;color:#ccc;margin-left:auto">🔒 sistema</span>`;
+    h+='</div>';
+    const div=document.createElement('div');div.className='cc';div.innerHTML=h;g.appendChild(div);
+  });
+}
+
+// SALVAR CAMPOS NO FIREBASE — sincroniza com index.html em tempo real
+window.salvarCampos=async function(){
+  if(!db){showToast('❌ Firebase não conectado','#c62828');return;}
+  try{
+    await setDoc(doc(db,'config','campos'),{campos, atualizadoEm: serverTimestamp()});
+    showToast('☁️ Campos publicados para todos os colaboradores!');
+  }catch(e){showToast('❌ Erro ao salvar campos.','#c62828');}
+};
+
+window.renomearCampo=(ci,v)=>{if(v.trim())campos[ci].label=v.trim();};
+window.toggleObrig=(ci)=>{campos[ci].required=!campos[ci].required;renderCampos();};
+window.mover=(ci,dir)=>{const ni=ci+dir;if(ni<0||ni>=campos.length)return;[campos[ci],campos[ni]]=[campos[ni],campos[ci]];renderCampos();};
+window.remCampo=(ci)=>{if(!confirm(`Remover "${campos[ci].label}"?`))return;campos.splice(ci,1);renderCampos();showToast('🗑️ Campo removido! Clique em Salvar para publicar.','#555');};
+window.addOpcao=(ci)=>{const inp=document.getElementById('ao_'+ci);const v=inp.value.trim();if(!v)return;if(!campos[ci].options)campos[ci].options=[];if(campos[ci].options.includes(v)){showToast('⚠️ Já existe!','#e65100');return;}campos[ci].options.push(v);inp.value='';renderCampos();showToast('✅ Opção adicionada! Clique em Salvar para publicar.');};
+window.remOpcao=(ci,oi)=>{campos[ci].options.splice(oi,1);renderCampos();showToast('🗑️ Opção removida! Clique em Salvar para publicar.','#555');};
+window.abrirModalCampo=()=>{document.getElementById('ncLbl').value='';document.getElementById('ncTipo').value='select';document.getElementById('ncOps').value='';document.getElementById('ncObrig').checked=true;document.getElementById('ncOpArea').style.display='block';document.getElementById('mCampoBg').classList.add('open');};
+window.criarCampo=()=>{
+  const label=document.getElementById('ncLbl').value.trim();const type=document.getElementById('ncTipo').value;const obrig=document.getElementById('ncObrig').checked;
+  if(!label){showToast('⚠️ Digite o nome','#e65100');return;}
+  const novo={id:'c_'+Date.now(),label,type,required:obrig,locked:false};
+  if(type==='select'){const ops=document.getElementById('ncOps').value.split('\n').map(s=>s.trim()).filter(Boolean);if(!ops.length){showToast('⚠️ Adicione opções','#e65100');return;}novo.options=ops;}
+  campos.push(novo);document.getElementById('mCampoBg').classList.remove('open');renderCampos();showToast(`✅ Campo "${label}" criado! Clique em Salvar para publicar.`);
+};
+
+// ──────────────────────────────
+// RELATÓRIOS
+// ──────────────────────────────
+const chartInstances = {};
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+function criarChart(id, config) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  chartInstances[id] = new Chart(ctx, config);
+}
+
+function getDadosFiltrados() {
+  const dias = parseInt(document.getElementById('rPeriodo').value);
+  const tecnico = document.getElementById('rTecnico').value;
+  const setor = document.getElementById('rSetor2').value;
+  const agora = new Date();
+  return dados.filter(d => {
+    if (dias > 0) {
+      const dt = d.criadoEm?.toDate?.() || null;
+      if (!dt) return false;
+      const diff = (agora - dt) / (1000*60*60*24);
+      if (diff > dias) return false;
+    }
+    if (tecnico && d.sol !== tecnico) return false;
+    if (setor && d.setor !== setor) return false;
+    return true;
+  });
+}
+
+function popularFiltrosRelatorio() {
+  // Técnicos
+  const tecs = [...new Set(dados.map(d=>d.sol).filter(Boolean))].sort();
+  const selTec = document.getElementById('rTecnico');
+  const curTec = selTec.value;
+  selTec.innerHTML = '<option value="">Todos os Técnicos</option>';
+  tecs.forEach(t => { const o=document.createElement('option'); o.value=t; o.textContent=t; if(t===curTec)o.selected=true; selTec.appendChild(o); });
+  // Setores
+  const sets = [...new Set(dados.map(d=>d.setor).filter(Boolean))].sort();
+  const selSet = document.getElementById('rSetor2');
+  const curSet = selSet.value;
+  selSet.innerHTML = '<option value="">Todos os Setores</option>';
+  sets.forEach(s => { const o=document.createElement('option'); o.value=s; o.textContent=s; if(s===curSet)o.selected=true; selSet.appendChild(o); });
+}
+
+function parseResMs(res) {
+  if (!res) return null;
+  const m = res.match(/(\d+)h\s*(\d+)m/);
+  if (!m) return null;
+  return parseInt(m[1])*3600000 + parseInt(m[2])*60000;
+}
+
+window.atualizarRelatorio = function() {
+  const fil = getDadosFiltrados();
+  const dias = parseInt(document.getElementById('rPeriodo').value);
+  popularFiltrosRelatorio();
+
+  // ── KPIs ──
+  const total = fil.length;
+  const conc = fil.filter(d=>d.sit==='CONCLUIDO').length;
+  const abertos = fil.filter(d=>d.sit==='ABERTO').length;
+  const emAnd = fil.filter(d=>d.sit==='EM ANDAMENTO').length;
+  const canc = fil.filter(d=>d.sit==='CANCELADO').length;
+  const emer = fil.filter(d=>d.status&&d.status.startsWith('🔴')).length;
+  const txResolucao = total > 0 ? ((conc/total)*100).toFixed(0) : 0;
+
+  // Tempo médio geral
+  const tempos = fil.filter(d=>d.res).map(d=>parseResMs(d.res)).filter(Boolean);
+  const tmMedio = tempos.length ? tempos.reduce((a,b)=>a+b,0)/tempos.length : 0;
+  const tmH = Math.floor(tmMedio/3600000), tmM = Math.floor((tmMedio%3600000)/60000);
+  const tmStr = tempos.length ? `${tmH}h ${tmM}m` : '—';
+
+  // Chamados hoje
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const hoje2 = new Date(); hoje2.setHours(23,59,59,999);
+  const hoje_n = fil.filter(d=>{ const dt=d.criadoEm?.toDate?.(); return dt&&dt>=hoje&&dt<=hoje2; }).length;
+
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><div class="kn">${total}</div><div class="kl">Total de Chamados</div></div>
+    <div class="kpi g"><div class="kn">${conc}</div><div class="kl">Concluídos</div><div class="ksub" style="color:var(--verde)">${txResolucao}% taxa de resolução</div></div>
+    <div class="kpi o"><div class="kn">${abertos+emAnd}</div><div class="kl">Pendentes</div><div class="ksub" style="color:var(--laranja)">${abertos} abertos · ${emAnd} andamento</div></div>
+    <div class="kpi r"><div class="kn">${emer}</div><div class="kl">Emergenciais</div></div>
+    <div class="kpi y"><div class="kn">${canc}</div><div class="kl">Cancelados</div></div>
+    <div class="kpi p"><div class="kn">${tmStr}</div><div class="kl">Tempo Médio Resolução</div></div>
+    <div class="kpi"><div class="kn">${hoje_n}</div><div class="kl">Abertos Hoje</div></div>`;
+
+  // ── GRÁFICO: Chamados por dia ──
+  const porDia = {};
+  const qtdDias = dias > 0 ? dias : 30;
+  for (let i=qtdDias-1; i>=0; i--) {
+    const d = new Date(); d.setDate(d.getDate()-i); d.setHours(0,0,0,0);
+    const k = d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+    porDia[k] = 0;
+  }
+  fil.forEach(d => {
+    const dt = d.criadoEm?.toDate?.();
+    if (!dt) return;
+    const k = dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+    if (porDia[k] !== undefined) porDia[k]++;
+  });
+  criarChart('cPorDia', {
+    type: 'line',
+    data: {
+      labels: Object.keys(porDia),
+      datasets: [{
+        label: 'Chamados',
+        data: Object.values(porDia),
+        borderColor: '#1a3a5c', backgroundColor: '#1a3a5c22',
+        tension: 0.4, fill: true, pointRadius: 3, pointBackgroundColor: '#1a3a5c'
+      }]
+    },
+    options: { responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{stepSize:1}}} }
+  });
+
+  // ── GRÁFICO: Situação (donut) ──
+  const sitLabels=['ABERTO','EM ANDAMENTO','CONCLUIDO','CANCELADO'];
+  const sitCores=['#e65100','#1565c0','#2e7d32','#c62828'];
+  const sitVals=sitLabels.map(s=>fil.filter(d=>d.sit===s).length);
+  criarChart('cSituacao', {
+    type: 'doughnut',
+    data: { labels: sitLabels, datasets: [{ data: sitVals, backgroundColor: sitCores, borderWidth: 2 }] },
+    options: { responsive:true, plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, padding:8 } } }, cutout:'60%' }
+  });
+
+  // ── GRÁFICO: Por Setor (horizontal bar) ──
+  const setorC = {};
+  fil.forEach(d=>{ if(d.setor) setorC[d.setor]=(setorC[d.setor]||0)+1; });
+  const setorSort = Object.entries(setorC).sort((a,b)=>b[1]-a[1]);
+  criarChart('cSetor', {
+    type: 'bar',
+    data: {
+      labels: setorSort.map(([k])=>k),
+      datasets: [{ data: setorSort.map(([,v])=>v), backgroundColor: '#1a3a5c99', borderColor: '#1a3a5c', borderWidth: 1, borderRadius: 4 }]
+    },
+    options: { indexAxis:'y', responsive:true, plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true,ticks:{stepSize:1}}} }
+  });
+
+  // ── GRÁFICO: Por Tipo ──
+  const tipoC = {};
+  fil.forEach(d=>{ if(d.tipo) { const t=d.tipo.length>28?d.tipo.slice(0,28)+'…':d.tipo; tipoC[t]=(tipoC[t]||0)+1; } });
+  const tipoSort = Object.entries(tipoC).sort((a,b)=>b[1]-a[1]);
+  criarChart('cTipo', {
+    type: 'bar',
+    data: {
+      labels: tipoSort.map(([k])=>k),
+      datasets: [{ data: tipoSort.map(([,v])=>v), backgroundColor: '#2e7d3299', borderColor: '#2e7d32', borderWidth: 1, borderRadius: 4 }]
+    },
+    options: { indexAxis:'y', responsive:true, plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true,ticks:{stepSize:1}}} }
+  });
+
+  // ── GRÁFICO: Prioridade ──
+  const prioMap={'🔴':'Emergencial','🟠':'Urgente','🟡':'Normal','🟢':'Demanda'};
+  const prioCores={'🔴':'#c62828','🟠':'#e65100','🟡':'#f9a825','🟢':'#2e7d32'};
+  const prioC={'🔴':0,'🟠':0,'🟡':0,'🟢':0};
+  fil.forEach(d=>{ const p=d.status?d.status.slice(0,2):''; if(prioC[p]!==undefined)prioC[p]++; });
+  criarChart('cPrioridade', {
+    type: 'bar',
+    data: {
+      labels: Object.keys(prioC).map(k=>`${k} ${prioMap[k]}`),
+      datasets: [{ data: Object.values(prioC), backgroundColor: Object.keys(prioC).map(k=>prioCores[k]+'99'), borderColor: Object.keys(prioC).map(k=>prioCores[k]), borderWidth: 1, borderRadius: 4 }]
+    },
+    options: { responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{stepSize:1}}} }
+  });
+
+  // ── GRÁFICO: Por Técnico ──
+  const tecC = {};
+  fil.forEach(d=>{ if(d.sol) tecC[d.sol]=(tecC[d.sol]||0)+1; });
+  const tecSort = Object.entries(tecC).sort((a,b)=>b[1]-a[1]);
+  criarChart('cTecnico', {
+    type: 'bar',
+    data: {
+      labels: tecSort.map(([k])=>k),
+      datasets: [{ data: tecSort.map(([,v])=>v), backgroundColor: '#7b1fa299', borderColor: '#7b1fa2', borderWidth: 1, borderRadius: 4 }]
+    },
+    options: { responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{stepSize:1}}} }
+  });
+
+  // ── Ranking colaboradores ──
+  const colab = {};
+  fil.forEach(d=>{ if(d.nome) colab[d.nome]=(colab[d.nome]||0)+1; });
+  const colabSort = Object.entries(colab).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  const posCls = ['p1','p2','p3'];
+  document.getElementById('rankColaboradores').innerHTML = colabSort.map(([nome,qt],i)=>`
+    <div class="rank-item">
+      <div class="rank-pos ${posCls[i]||''}">${i+1}</div>
+      <span class="rank-nome">${nome}</span>
+      <span class="rank-num">${qt}</span>
+    </div>`).join('') || '<div style="color:#aaa;font-size:.83rem">Sem dados no período.</div>';
+
+  // ── GRÁFICO: Tempo médio por setor ──
+  const tmSetor = {};
+  fil.filter(d=>d.res&&d.setor).forEach(d=>{
+    const ms = parseResMs(d.res);
+    if (!ms) return;
+    if (!tmSetor[d.setor]) tmSetor[d.setor] = [];
+    tmSetor[d.setor].push(ms);
+  });
+  const tmSetorLabels = Object.keys(tmSetor);
+  const tmSetorVals = tmSetorLabels.map(s => {
+    const arr = tmSetor[s];
+    const avg = arr.reduce((a,b)=>a+b,0)/arr.length;
+    return parseFloat((avg/60000).toFixed(1)); // em minutos
+  });
+  criarChart('cTempoSetor', {
+    type: 'bar',
+    data: {
+      labels: tmSetorLabels,
+      datasets: [{ label: 'Minutos', data: tmSetorVals, backgroundColor: '#1565c099', borderColor: '#1565c0', borderWidth: 1, borderRadius: 4 }]
+    },
+    options: { responsive:true, plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => { const m=ctx.raw; return `${Math.floor(m/60)}h ${Math.round(m%60)}m`; } } } }, scales:{ y:{ beginAtZero:true, title:{ display:true, text:'Minutos', font:{size:11} } } } }
+  });
+};
+
+window.exportarRelPDF = function() {
+  const fil = getDadosFiltrados();
+  const conc = fil.filter(d=>d.sit==='CONCLUIDO').length;
+  const tx = fil.length ? ((conc/fil.length)*100).toFixed(0) : 0;
+  const tempos = fil.filter(d=>d.res).map(d=>parseResMs(d.res)).filter(Boolean);
+  const tmMedio = tempos.length ? tempos.reduce((a,b)=>a+b,0)/tempos.length : 0;
+  const tmStr = tempos.length ? `${Math.floor(tmMedio/3600000)}h ${Math.floor((tmMedio%3600000)/60000)}m` : '—';
+  const setorC={};
+  fil.forEach(d=>{ if(d.setor) setorC[d.setor]=(setorC[d.setor]||0)+1; });
+  const topSetor = Object.entries(setorC).sort((a,b)=>b[1]-a[1])[0];
+  const tipoC={};
+  fil.forEach(d=>{ if(d.tipo) tipoC[d.tipo]=(tipoC[d.tipo]||0)+1; });
+  const topTipo = Object.entries(tipoC).sort((a,b)=>b[1]-a[1])[0];
+  const colabC={};
+  fil.forEach(d=>{ if(d.nome) colabC[d.nome]=(colabC[d.nome]||0)+1; });
+  const topColab = Object.entries(colabC).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const html=`<html><head><meta charset="UTF-8"><title>Relatório T.I.</title>
+  <style>body{font-family:Arial;font-size:12px;color:#222}h1{color:#1a3a5c;font-size:16px;margin-bottom:4px}h2{color:#1a3a5c;font-size:13px;margin:18px 0 8px;border-bottom:1px solid #ddd;padding-bottom:4px}.kpis{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}.kpi{border:1px solid #ddd;border-radius:6px;padding:10px 16px;min-width:130px}.kpi b{display:block;font-size:20px;color:#1a3a5c}.kpi span{font-size:11px;color:#777}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#1a3a5c;color:#fff;padding:5px}td{padding:4px 5px;border-bottom:1px solid #eee}</style>
+  </head><body>
+  <h1>📋 Relatório de Chamados T.I. — Norte Geradores</h1>
+  <p style="color:#888;font-size:11px">Gerado em: ${new Date().toLocaleString('pt-BR')} · Período: ${document.getElementById('rPeriodo').options[document.getElementById('rPeriodo').selectedIndex].text}</p>
+  <div class="kpis">
+    <div class="kpi"><b>${fil.length}</b><span>Total</span></div>
+    <div class="kpi"><b>${conc}</b><span>Concluídos (${tx}%)</span></div>
+    <div class="kpi"><b>${fil.filter(d=>d.sit==='ABERTO').length}</b><span>Abertos</span></div>
+    <div class="kpi"><b>${fil.filter(d=>d.status&&d.status.startsWith('🔴')).length}</b><span>Emergenciais</span></div>
+    <div class="kpi"><b>${tmStr}</b><span>Tempo Médio</span></div>
+    ${topSetor?`<div class="kpi"><b>${topSetor[0]}</b><span>Setor + chamados (${topSetor[1]})</span></div>`:''}
+  </div>
+  <h2>🏆 Top Colaboradores</h2>
+  <table><tr><th>#</th><th>Nome</th><th>Chamados</th></tr>${topColab.map(([n,q],i)=>`<tr><td>${i+1}</td><td>${n}</td><td>${q}</td></tr>`).join('')}</table>
+  <h2>📋 Chamados do Período</h2>
+  <table><tr><th>#</th><th>Data</th><th>Nome</th><th>Setor</th><th>Tipo</th><th>Prioridade</th><th>Situação</th><th>Tempo</th><th>Por</th></tr>
+  ${fil.map((r,i)=>`<tr><td>${r.num||i+1}</td><td>${fmtDt(r.criadoEm)}</td><td>${r.nome||''}</td><td>${r.setor||''}</td><td>${r.tipo||''}</td><td>${r.status||''}</td><td>${r.sit||''}</td><td>${r.res||'-'}</td><td>${r.sol||'-'}</td></tr>`).join('')}
+  </table></body></html>`;
+  const w=window.open('','_blank');w.document.write(html);w.document.close();w.print();
+};
+window.exportarPDF=()=>{const fil=getFil();let html=`<html><head><meta charset="UTF-8"><title>Chamados T.I.</title><style>body{font-family:Arial;font-size:11px}h2{color:#1a3a5c}table{width:100%;border-collapse:collapse;margin-top:12px}th{background:#1a3a5c;color:#fff;padding:6px;text-align:left}td{padding:5px;border-bottom:1px solid #eee}</style></head><body><h2>📋 Relatório Chamados T.I.</h2><p>Gerado: ${new Date().toLocaleString('pt-BR')} — ${fil.length} chamados</p><table><tr><th>#</th><th>Data</th><th>Nome</th><th>Setor</th><th>Tipo</th><th>Descrição</th><th>Prioridade</th><th>Situação</th><th>Tempo</th><th>Por</th></tr>`;fil.forEach((r,i)=>{html+=`<tr><td>${i+1}</td><td>${fmtDt(r.criadoEm)}</td><td>${r.nome||''}</td><td>${r.setor||''}</td><td>${r.tipo||''}</td><td>${r.desc||''}</td><td>${r.status||''}</td><td>${r.sit||''}</td><td>${r.res||'-'}</td><td>${r.sol||'-'}</td></tr>`;});html+=`</table></body></html>`;const w=window.open('','_blank');w.document.write(html);w.document.close();w.print();};
+window.exportarCSV=()=>{const fil=getFil();let csv='#,Data,Nome,Setor,Tipo,Descrição,Prioridade,Situação,Tempo,Por\n';fil.forEach((r,i)=>{csv+=`${i+1},"${fmtDt(r.criadoEm)}","${r.nome||''}","${r.setor||''}","${r.tipo||''}","${(r.desc||'').replace(/"/g,"'")}","${r.status||''}","${r.sit||''}","${r.res||'-'}","${r.sol||'-'}"\n`;});const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download='chamados_ti.csv';a.click();showToast('📊 CSV exportado!');};
+
+function showToast(msg,bg='#2e7d32'){const t=document.getElementById('toast');t.textContent=msg;t.style.background=bg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+
+// PWA
+if('serviceWorker' in navigator){const sw=`self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>clients.claim());self.addEventListener('fetch',e=>{if(e.request.url.includes('firebasejs')||e.request.url.includes('gstatic'))return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});`;navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});}
+const manifest={name:'Painel Técnico T.I.',short_name:'TI Técnico',start_url:'./',display:'standalone',background_color:'#f0f2f5',theme_color:'#1a3a5c',icons:[{src:'https://placehold.co/192x192/1a3a5c/fff?text=TI',sizes:'192x192',type:'image/png'}]};
+const mLink=document.createElement('link');mLink.rel='manifest';mLink.href=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:'application/json'}));document.head.appendChild(mLink);
+
+renderCampos();
+</script>
+</body>
+</html>

@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a3a5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Chamados TI">
+<link rel="apple-touch-icon" href="https://placehold.co/192x192/1a3a5c/fff?text=TI">
+<title>Chamados T.I. — Norte Geradores</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;flex-direction:column}
+:root{--azul:#1a3a5c;--azul2:#245080;--verde:#2e7d32;--verm:#c62828;--laranja:#e65100}
+header{background:var(--azul);color:#fff;padding:14px 20px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+header h1{font-size:1.1rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px}
+header p{font-size:.75rem;opacity:.7;margin-top:3px}
+.status-bar{background:#e3f2fd;padding:7px 16px;font-size:.74rem;color:#1565c0;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px}
+.status-bar.off{background:#fce4ec;color:#c62828}
+.dot{width:8px;height:8px;border-radius:50%;background:#1565c0;display:inline-block;flex-shrink:0}
+.dot.off{background:#c62828}
+nav{display:flex;background:#fff;border-bottom:2px solid #e0e7ef}
+.tab{flex:1;padding:12px 8px;text-align:center;cursor:pointer;font-size:.83rem;font-weight:600;color:#888;border:none;background:none;border-bottom:3px solid transparent;transition:.2s}
+.tab.active{color:var(--azul);border-bottom-color:var(--azul)}
+main{flex:1;padding:16px;max-width:560px;width:100%;margin:0 auto}
+.page{display:none}.page.active{display:block}
+.card{background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.08);padding:20px;margin-bottom:14px}
+.card h2{color:var(--azul);font-size:.95rem;font-weight:700;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #e8eef5;display:flex;align-items:center;gap:6px}
+.form-row{margin-bottom:14px}
+label{display:block;font-size:.79rem;font-weight:700;color:#555;margin-bottom:5px}
+input,select,textarea{width:100%;padding:11px 13px;border:1.5px solid #d0d7e2;border-radius:8px;font-size:.88rem;font-family:inherit;background:#fafbfc;transition:border .2s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--azul);background:#fff;box-shadow:0 0 0 3px #1a3a5c15}
+textarea{resize:vertical;min-height:80px}
+.req::after{content:' *';color:var(--verm)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:440px){.g2{grid-template-columns:1fr}}
+.btn{width:100%;padding:13px;border:none;border-radius:8px;font-size:.95rem;font-weight:700;cursor:pointer;transition:.2s;margin-top:6px}
+.btn-primary{background:var(--azul);color:#fff}.btn-primary:hover{background:var(--azul2)}
+.btn-primary:active{transform:scale(.98)}
+.btn-sec{background:#fff;color:var(--azul);border:2px solid var(--azul)}.btn-sec:hover{background:#f0f4f8}
+.btn-gray{background:#eee;color:#444}.btn-gray:hover{background:#ddd}
+.err{color:var(--verm);font-size:.81rem;padding:9px 12px;background:#fce4ec;border-radius:7px;margin-bottom:10px;display:none}
+.loading-txt{color:#1565c0;font-size:.83rem;text-align:center;padding:8px;display:none}
+
+/* TELA DE SELEÇÃO DE USUÁRIO */
+#telaUsuario{position:fixed;inset:0;background:#f0f4f8;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+#telaUsuario .logo{font-size:3rem;margin-bottom:12px}
+#telaUsuario h2{color:var(--azul);font-size:1.2rem;font-weight:700;margin-bottom:4px;text-align:center}
+#telaUsuario p{color:#888;font-size:.83rem;margin-bottom:24px;text-align:center}
+.user-search{width:100%;max-width:420px;position:relative;margin-bottom:12px}
+.user-search input{padding:13px 16px;font-size:.95rem;border-radius:10px;border:2px solid #d0d7e2;background:#fff;width:100%}
+.user-search input:focus{border-color:var(--azul);box-shadow:0 0 0 3px #1a3a5c15}
+.user-list{width:100%;max-width:420px;background:#fff;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.12);max-height:50vh;overflow-y:auto}
+.user-item{padding:13px 18px;cursor:pointer;font-size:.9rem;font-weight:600;color:#333;border-bottom:1px solid #f0f0f0;transition:.15s;display:flex;align-items:center;gap:10px}
+.user-item:last-child{border-bottom:none}
+.user-item:hover{background:#f0f4f8;color:var(--azul)}
+.user-item .av{width:34px;height:34px;border-radius:50%;background:var(--azul);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;flex-shrink:0}
+.loading-users{padding:24px;text-align:center;color:#aaa;font-size:.85rem}
+
+/* CHIP USUÁRIO ATIVO */
+.user-chip{display:flex;align-items:center;gap:8px;background:#e8f0fe;border-radius:20px;padding:6px 12px;font-size:.8rem;font-weight:700;color:var(--azul);cursor:pointer;border:none;margin-bottom:14px}
+.user-chip:hover{background:#d0e0ff}
+
+/* SUCESSO */
+.sucesso{text-align:center;padding:20px 10px;display:none}
+.sucesso .ico{font-size:52px;margin-bottom:10px}
+.sucesso h2{color:var(--verde);font-size:1.2rem;margin-bottom:8px}
+.sucesso p{color:#666;font-size:.85rem;line-height:1.6}
+.num-box{background:#e8f5e9;border:2px solid #a5d6a7;border-radius:10px;padding:12px 20px;display:inline-block;margin:12px 0}
+.num-box .n{font-size:1.8rem;font-weight:900;color:var(--verde)}
+.num-box small{font-size:.73rem;color:#666;display:block}
+
+/* CHAMADOS */
+.chamado-item{border-radius:10px;padding:13px;margin-bottom:10px;border-left:4px solid var(--azul);background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.07)}
+.chamado-item.c-ABERTO{border-color:var(--laranja)}
+.chamado-item.c-EMANDAMENTO,.chamado-item.c-EM-ANDAMENTO{border-color:#1565c0}
+.chamado-item.c-CONCLUIDO{border-color:var(--verde)}
+.chamado-item.c-CANCELADO{border-color:var(--verm)}
+.chamado-topo{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:700}
+.b-ABERTO{background:#fff3e0;color:#e65100}
+.b-EMANDAMENTO,.b-EM-ANDAMENTO{background:#e3f2fd;color:#1565c0}
+.b-CONCLUIDO{background:#e8f5e9;color:#2e7d32}
+.b-CANCELADO{background:#fce4ec;color:#c62828}
+.empty{text-align:center;color:#bbb;padding:32px 16px;font-size:.88rem}
+.filter-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.ftab{padding:5px 12px;border-radius:20px;border:1.5px solid #d0d7e2;background:#fff;font-size:.75rem;font-weight:700;cursor:pointer;color:#666;transition:.15s}
+.ftab.active{background:var(--azul);color:#fff;border-color:var(--azul)}
+.install-bar{background:linear-gradient(135deg,#1a3a5c,#245080);color:#fff;padding:12px 16px;display:none;align-items:center;justify-content:space-between;gap:10px}
+.install-bar p{font-size:.8rem;line-height:1.4}
+.install-bar button{background:#fff;color:var(--azul);border:none;border-radius:6px;padding:7px 14px;font-size:.8rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
+footer{text-align:center;padding:12px;font-size:.72rem;color:#bbb}
+</style>
+</head>
+<body>
+
+<!-- TELA SELEÇÃO DE USUÁRIO -->
+<div id="telaUsuario">
+  <div class="logo">🖥️</div>
+  <h2>Chamados T.I.</h2>
+  <p>Norte Geradores — Selecione seu nome para continuar</p>
+  <div class="user-search">
+    <input type="text" id="userSearch" placeholder="🔍 Buscar seu nome..." oninput="filtrarUsuarios()" autocomplete="off">
+  </div>
+  <div class="user-list" id="userList">
+    <div class="loading-users">⏳ Carregando colaboradores...</div>
+  </div>
+</div>
+
+<div id="appMain" style="display:none;flex-direction:column;min-height:100vh;flex:1">
+  <div class="install-bar" id="installBar">
+    <p>📲 Instale o app no seu celular!</p>
+    <button onclick="instalarApp()">Instalar</button>
+  </div>
+  <header>
+    <h1>🖥️ Chamados T.I.</h1>
+    <p>Norte Geradores — Suporte Técnico</p>
+  </header>
+  <div class="status-bar" id="statusBar">
+    <span class="dot" id="statusDot"></span>
+    <span id="statusTxt">Conectando...</span>
+  </div>
+  <nav>
+    <button class="tab active" onclick="goTab('abrir',this)">➕ Abrir Chamado</button>
+    <button class="tab" onclick="goTab('meus',this)">📋 Meus Chamados</button>
+  </nav>
+  <main>
+    <!-- ABA ABRIR -->
+    <div class="page active" id="tab-abrir">
+      <div class="card" id="formCard">
+        <h2>📝 Novo Chamado</h2>
+        <button class="user-chip" id="userChip" onclick="trocarUsuario()">
+          <span id="userChipNome"></span> · Clique para trocar
+        </button>
+        <div id="camposDinamicos"></div>
+        <div class="err" id="fErr"></div>
+        <div class="loading-txt" id="fLoad">⏳ Enviando chamado...</div>
+        <button class="btn btn-primary" onclick="enviar()">📨 Enviar Chamado</button>
+        <button class="btn btn-gray" onclick="limparForm()" style="margin-top:8px">🗑️ Limpar</button>
+      </div>
+      <div class="sucesso" id="sucessoCard">
+        <div class="ico">✅</div>
+        <h2>Chamado Aberto!</h2>
+        <p>Olá, <b id="sNome"></b>!<br>Seu chamado foi registrado com sucesso.</p>
+        <div class="num-box">
+          <small>Número do chamado</small>
+          <div class="n" id="sNum"></div>
+        </div>
+        <p style="margin-bottom:16px">Guarde este número para acompanhar o atendimento.<br>Você pode ver seus chamados na aba <b>Meus Chamados</b>.</p>
+        <button class="btn btn-primary" style="max-width:260px;margin:0 auto 8px" onclick="novoForm()">🔄 Abrir outro chamado</button>
+        <button class="btn btn-sec" style="max-width:260px;margin:0 auto" onclick="verMeusChamados()">📋 Ver Meus Chamados</button>
+      </div>
+    </div>
+
+    <!-- ABA MEUS CHAMADOS -->
+    <div class="page" id="tab-meus">
+      <div class="card">
+        <h2>📋 Meus Chamados</h2>
+        <div style="font-size:.83rem;color:#666;margin-bottom:10px">Olá, <b id="meusNome"></b>! Aqui estão todos os seus chamados.</div>
+        <div class="filter-tabs" id="filterTabs">
+          <button class="ftab active" onclick="filtrarStatus('',this)">Todos</button>
+          <button class="ftab" onclick="filtrarStatus('ABERTO',this)">🟠 Aberto</button>
+          <button class="ftab" onclick="filtrarStatus('EM ANDAMENTO',this)">🔵 Andamento</button>
+          <button class="ftab" onclick="filtrarStatus('CONCLUIDO',this)">🟢 Concluído</button>
+          <button class="ftab" onclick="filtrarStatus('CANCELADO',this)">🔴 Cancelado</button>
+        </div>
+      </div>
+      <div id="cRes"><div class="empty">⏳ Carregando seus chamados...</div></div>
+    </div>
+  </main>
+  <footer>Sistema de Chamados T.I. © Norte Geradores</footer>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, addDoc, query, where, onSnapshot, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyAGkaCk_ot9tqgeH1c1E14ZAt0r2e_u5N8",
+  authDomain: "chamados-ti-ng.firebaseapp.com",
+  projectId: "chamados-ti-ng",
+  storageBucket: "chamados-ti-ng.firebasestorage.app",
+  messagingSenderId: "901816146090",
+  appId: "1:901816146090:web:ebd77c71f015bfc73598d3"
+};
+// ============================================================
+
+let db, usuarioAtual = null, campos = [], meusUnsubscribe = null, filtroStatus = '';
+let todosMeusChamados = [];
+
+// INIT FIREBASE
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  setStatus(true);
+} catch(e) { setStatus(false); }
+
+function setStatus(ok) {
+  const bar = document.getElementById('statusBar');
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusTxt');
+  bar.className = 'status-bar' + (ok ? '' : ' off');
+  dot.className = 'dot' + (ok ? '' : ' off');
+  txt.textContent = ok ? '● Conectado — tempo real' : '● Sem conexão com o servidor';
+}
+
+// ──────────────────────────────
+// TELA DE SELEÇÃO DE USUÁRIO
+// ──────────────────────────────
+let todosUsuarios = [];
+
+async function carregarUsuarios() {
+  if (!db) return;
+  // Escuta mudanças em tempo real no documento de campos
+  onSnapshot(doc(db, 'config', 'campos'), snap => {
+    if (snap.exists()) {
+      const data = snap.data();
+      campos = data.campos || [];
+      const campoNome = campos.find(c => c.id === 'nome');
+      todosUsuarios = campoNome ? (campoNome.options || []) : [];
+    } else {
+      // Sem config salva — usa lista padrão
+      todosUsuarios = ['ALEX CASTELO','AMANDA FAVACHO','AMANDA PIEDADE','ANA PAULA','ANDREIA DAMASCENO','BIANCA NORONHA','BRUNA COSTA','BRUNO CAVALCANTE','CAMILA DONATO','CARLOS COSTA','CLAUDETE CONCEIÇÃO','CLEIDE AMANAJÁS','DANIELLE ROSA','DAVID JESUS','DAYANE ALMEIDA','DÉBORA BORGES','EDILSON JUNIOR','EDSON DUARTE','FRANCY BRITO','GEORGINA ULIANA','GIOVANNI CUNHA','GIRLEIDE SILVA','GUSTAVO SUP.TECNICO','HUATILA RODRIGUES','ICARO SANTOS','INGREDY SILVA','ISAIAS MALCHER','IZABELA FERREIRA','JAMILY CRUZ','JOYSE SENA','JOZIANA ROSARIO','JULIANA AROUCA','KAREN RESENDE','KELLY PASSOS','LABELLE PEREIRA','LETICIA ESCAMILLA','LUCIENE RODRIGUES','MARCUS ARAUJO','MARCOS DA SILVA','MARCOS SENA','MARIANA FRAZÃO','NAIANE SODRE','NATAN RIBEIRO','ORLANDO LIMA','PAMELA MIRANDA','RAIMUNDA BARBÁRA','RAYLENE LOBATO','ROBERTO NASCIMENTO','SIMONE SANTOS','SOCORRO AFONSO','SUELLEN MAXIMIANO','TAINÁ CASTRO','TAYNARA ARCANJO','TIAGO NASCIMENTO','VALERIA SOUZA','WARLEN','MALU MATOS'];
+    }
+    renderListaUsuarios(todosUsuarios);
+    // Se já estava logado, reconstrói o formulário
+    if (usuarioAtual) buildForm();
+  });
+}
+
+function renderListaUsuarios(lista) {
+  const ul = document.getElementById('userList');
+  if (!lista.length) { ul.innerHTML = '<div class="loading-users">Nenhum colaborador cadastrado.</div>'; return; }
+  ul.innerHTML = lista.map(u => {
+    const ini = u.trim()[0] || '?';
+    return `<div class="user-item" onclick="selecionarUsuario('${u}')">
+      <div class="av">${ini}</div>
+      <span>${u}</span>
+    </div>`;
+  }).join('');
+}
+
+window.filtrarUsuarios = function() {
+  const q = document.getElementById('userSearch').value.toLowerCase();
+  const fil = todosUsuarios.filter(u => u.toLowerCase().includes(q));
+  renderListaUsuarios(fil);
+};
+
+window.selecionarUsuario = function(nome) {
+  usuarioAtual = nome;
+  localStorage.setItem('usuarioTI', nome);
+  document.getElementById('telaUsuario').style.display = 'none';
+  document.getElementById('appMain').style.display = 'flex';
+  document.getElementById('userChipNome').textContent = '👤 ' + nome;
+  document.getElementById('meusNome').textContent = nome;
+  buildForm();
+  carregarMeusChamados();
+};
+
+window.trocarUsuario = function() {
+  usuarioAtual = null;
+  localStorage.removeItem('usuarioTI');
+  if (meusUnsubscribe) meusUnsubscribe();
+  document.getElementById('telaUsuario').style.display = 'flex';
+  document.getElementById('appMain').style.display = 'none';
+  document.getElementById('userSearch').value = '';
+  renderListaUsuarios(todosUsuarios);
+};
+
+// ──────────────────────────────
+// FORMULÁRIO DINÂMICO
+// ──────────────────────────────
+function buildForm() {
+  const wrap = document.getElementById('camposDinamicos');
+  wrap.innerHTML = '';
+  // Campos que vêm do Firebase (exceto nome que é o usuário logado e sol que é do técnico)
+  const skip = ['nome', 'sol'];
+  const camposForm = campos.filter(c => !skip.includes(c.id));
+  // Campos padrão se Firebase ainda não carregou
+  const padroes = [
+    {id:'setor',label:'Setor / Departamento',type:'select',required:true,options:['Administrativo','Comercial','Compras/Suprimentos','DP/RH','Faturamento','Financeiro','Gerência','Manutenção','Pós Venda','SESMT','Transporte','Outro']},
+    {id:'tipo',label:'Tipo de Solicitação',type:'select',required:true,options:['Problema Técnico','Suporte (Ajuda)','Instalação (Aplicativos, Assinaturas, Certificados e etc...)','Solicitação de Acesso','Problema com Impressora','Suporte ao SISLOC','Criação de Usuário','Suporte a CFTV (Câmeras)']},
+    {id:'status',label:'Prioridade',type:'select',required:true,options:['🔴 Emergencial (Imediato)','🟠 Urgente (de 30min à 1h)','🟡 Normal (de 1h à 3h)','🟢 Demanda (Melhoria sem prazo imediato)']},
+    {id:'desc',label:'Descrição do Problema',type:'textarea',required:true},
+  ];
+  const lista = camposForm.length ? camposForm : padroes;
+
+  // Agrupa em pares para grid
+  let i = 0;
+  while (i < lista.length) {
+    const c = lista[i];
+    const next = lista[i+1];
+    const isLong = c.type === 'textarea' || c.type === 'text';
+    if (!isLong && next && next.type !== 'textarea') {
+      // Par lado a lado
+      wrap.innerHTML += `<div class="g2">
+        ${buildCampoHtml(c)}
+        ${buildCampoHtml(next)}
+      </div>`;
+      i += 2;
+    } else {
+      wrap.innerHTML += buildCampoHtml(c);
+      i++;
+    }
+  }
+  // Campo foto sempre no final
+  wrap.innerHTML += `<div class="form-row"><label>Foto / Print (URL — opcional)</label><input type="text" id="f_foto" placeholder="Link do Google Drive..."></div>`;
+}
+
+function buildCampoHtml(c) {
+  const req = c.required ? 'class="req"' : '';
+  let input = '';
+  if (c.type === 'select') {
+    input = `<select id="f_${c.id}"><option value="">Selecione...</option>${(c.options||[]).map(o=>`<option>${o}</option>`).join('')}</select>`;
+  } else if (c.type === 'textarea') {
+    input = `<textarea id="f_${c.id}" placeholder="Descreva detalhadamente..."></textarea>`;
+  } else {
+    input = `<input type="text" id="f_${c.id}" placeholder="${c.label}...">`;
+  }
+  return `<div class="form-row"><label ${req}>${c.label}</label>${input}</div>`;
+}
+
+// ──────────────────────────────
+// ENVIAR CHAMADO
+// ──────────────────────────────
+window.enviar = async function() {
+  const err = document.getElementById('fErr');
+  err.style.display = 'none';
+  if (!usuarioAtual) { err.textContent='⚠️ Selecione seu nome!'; err.style.display='block'; return; }
+  if (!db) { err.textContent='❌ Sem conexão com o servidor!'; err.style.display='block'; return; }
+
+  const skip = ['nome','sol'];
+  const camposForm = campos.filter(c => !skip.includes(c.id));
+  const padroes = ['setor','tipo','status','desc'];
+  const ids = camposForm.length ? camposForm.map(c=>c.id) : padroes;
+
+  // Validação
+  const vals = {};
+  for (const id of ids) {
+    const el = document.getElementById('f_'+id);
+    if (!el) continue;
+    const v = el.value.trim();
+    const campo = campos.find(c=>c.id===id) || {required: id !== 'foto'};
+    if (campo.required && !v) {
+      err.textContent = '⚠️ Preencha todos os campos obrigatórios (*)';
+      err.style.display = 'block'; return;
+    }
+    vals[id] = v;
+  }
+  const foto = document.getElementById('f_foto')?.value?.trim() || '';
+
+  document.getElementById('fLoad').style.display = 'block';
+  try {
+    // Gera número sequencial via contador no Firestore
+    const contadorRef = doc(db, 'config', 'contador');
+    const contadorSnap = await getDoc(contadorRef);
+    let proximoNum = 1;
+    if (contadorSnap.exists()) {
+      proximoNum = (contadorSnap.data().total || 0) + 1;
+      await updateDoc(contadorRef, { total: increment(1) });
+    } else {
+      await setDoc(contadorRef, { total: 1 });
+    }
+    const num = String(proximoNum).padStart(5, '0'); // Ex: 00001, 00042
+
+    await addDoc(collection(db, 'chamados'), {
+      num, nome: usuarioAtual, sit: 'ABERTO', sol: '', res: '',
+      inicio: null, conclusao: null, foto,
+      criadoEm: serverTimestamp(),
+      ...vals
+    });
+    document.getElementById('fLoad').style.display = 'none';
+    document.getElementById('sNome').textContent = usuarioAtual;
+    document.getElementById('sNum').textContent = '#' + num;
+    document.getElementById('formCard').style.display = 'none';
+    document.getElementById('sucessoCard').style.display = 'block';
+  } catch(e) {
+    document.getElementById('fLoad').style.display = 'none';
+    err.textContent = '❌ Erro ao enviar. Verifique a conexão.';
+    err.style.display = 'block';
+  }
+};
+
+window.limparForm = function() {
+  document.querySelectorAll('#camposDinamicos input, #camposDinamicos select, #camposDinamicos textarea').forEach(el => el.value = '');
+  document.getElementById('fErr').style.display = 'none';
+};
+
+window.novoForm = function() {
+  limparForm();
+  document.getElementById('formCard').style.display = 'block';
+  document.getElementById('sucessoCard').style.display = 'none';
+};
+
+window.verMeusChamados = function() {
+  const tabs = document.querySelectorAll('.tab');
+  goTab('meus', tabs[1]);
+};
+
+// ──────────────────────────────
+// MEUS CHAMADOS (TEMPO REAL)
+// ──────────────────────────────
+function carregarMeusChamados() {
+  if (!db || !usuarioAtual) return;
+  if (meusUnsubscribe) meusUnsubscribe();
+  // Sem orderBy para evitar exigência de índice composto no Firestore
+  // Ordenação feita no cliente
+  const q = query(collection(db,'chamados'), where('nome','==', usuarioAtual));
+  meusUnsubscribe = onSnapshot(q, snap => {
+    todosMeusChamados = snap.docs
+      .map(d => ({_id:d.id,...d.data()}))
+      .sort((a,b) => {
+        const ta = a.criadoEm?.toDate?.()?.getTime() || 0;
+        const tb = b.criadoEm?.toDate?.()?.getTime() || 0;
+        return tb - ta; // mais recente primeiro
+      });
+    renderMeusChamados();
+  }, err => {
+    console.error('Firestore error:', err);
+    document.getElementById('cRes').innerHTML = `<div class="empty">❌ Erro ao carregar chamados.<br><small style="color:#aaa">${err.message}</small></div>`;
+  });
+}
+
+window.filtrarStatus = function(status, btn) {
+  filtroStatus = status;
+  document.querySelectorAll('.ftab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMeusChamados();
+};
+
+function renderMeusChamados() {
+  const cont = document.getElementById('cRes');
+  const lista = filtroStatus ? todosMeusChamados.filter(c => c.sit === filtroStatus) : todosMeusChamados;
+  if (!lista.length) {
+    cont.innerHTML = `<div class="empty">${filtroStatus ? 'Nenhum chamado com status "'+filtroStatus+'".' : 'Você ainda não tem chamados.'}</div>`;
+    return;
+  }
+  cont.innerHTML = lista.map(r => {
+    const sitKey = (r.sit||'ABERTO').replace(/\s/g,'-');
+    const badgeKey = (r.sit||'ABERTO').replace(/\s/g,'');
+    return `<div class="chamado-item c-${sitKey}">
+      <div class="chamado-topo">
+        <div>
+          <span style="font-size:.71rem;color:#999">#${r.num||'—'} · ${fmtDt(r.criadoEm)}</span>
+          <b style="display:block;font-size:.88rem;margin:2px 0">${r.tipo||''}</b>
+          <span style="font-size:.76rem;color:#777">${r.setor||''}</span>
+        </div>
+        <span class="badge b-${badgeKey}">${r.sit||'ABERTO'}</span>
+      </div>
+      <p style="font-size:.83rem;color:#444;margin:6px 0;line-height:1.5">${r.desc||''}</p>
+      <div style="font-size:.72rem;color:#999;display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
+        <span>⚡ ${r.status||''}</span>
+        ${r.sol?`<span>👨‍💻 ${r.sol}</span>`:''}
+        ${r.res?`<span>⏱️ ${r.res}</span>`:''}
+        ${r.sit==='CONCLUIDO'?`<span style="color:var(--verde);font-weight:700">✅ Resolvido</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function fmtDt(ts) {
+  if (!ts) return '';
+  try { const d=ts.toDate?ts.toDate():new Date(ts); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR').slice(0,5); } catch(e){return '';}
+}
+
+// ──────────────────────────────
+// TABS
+// ──────────────────────────────
+window.goTab = function(id, btn) {
+  document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'meus') renderMeusChamados();
+};
+
+// ──────────────────────────────
+// PWA
+// ──────────────────────────────
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredPrompt=e;
+  document.getElementById('installBar').style.display='flex';
+});
+window.instalarApp = async function() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt=null;
+  document.getElementById('installBar').style.display='none';
+};
+
+// SERVICE WORKER
+if ('serviceWorker' in navigator) {
+  const sw=`self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>clients.claim());self.addEventListener('fetch',e=>{if(e.request.url.includes('firebasejs')||e.request.url.includes('gstatic'))return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});`;
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
+}
+const manifest={name:'Chamados T.I. — Norte Geradores',short_name:'Chamados TI',start_url:'./',display:'standalone',background_color:'#f0f4f8',theme_color:'#1a3a5c',icons:[{src:'https://placehold.co/192x192/1a3a5c/fff?text=TI',sizes:'192x192',type:'image/png'},{src:'https://placehold.co/512x512/1a3a5c/fff?text=TI',sizes:'512x512',type:'image/png'}]};
+const mLink=document.createElement('link');mLink.rel='manifest';mLink.href=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:'application/json'}));document.head.appendChild(mLink);
+
+// ──────────────────────────────
+// INICIALIZAR
+// ──────────────────────────────
+carregarUsuarios();
+// Verifica se já tinha usuário salvo
+const saved = localStorage.getItem('usuarioTI');
+if (saved) selecionarUsuario(saved);
+</script>
+</body>
+</html>
