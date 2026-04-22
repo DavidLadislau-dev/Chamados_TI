@@ -189,6 +189,9 @@ const firebaseConfig = {
 
 let db, usuarioAtual = null, campos = [], meusUnsubscribe = null, filtroStatus = '';
 let todosMeusChamados = [];
+let fotoBase64 = '';
+const FOTO_MAX_DIM = 1200;
+const FOTO_QUALIDADE = 0.75;
 
 // INIT FIREBASE
 try {
@@ -305,8 +308,26 @@ function buildForm() {
       i++;
     }
   }
-  // Campo foto sempre no final
-  wrap.innerHTML += `<div class="form-row"><label>Foto / Print (URL — opcional)</label><input type="text" id="f_foto" placeholder="Link do Google Drive..."></div>`;
+  // Campo foto sempre no final (câmera ou galeria)
+  wrap.innerHTML += `
+    <div class="form-row">
+      <label>Foto / Print (opcional)</label>
+      <input type="file" id="f_foto_file" accept="image/*" style="display:none" onchange="processarFoto(event)">
+      <div id="fotoBotoes" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" class="btn btn-sec" style="flex:1;margin-top:0" onclick="document.getElementById('f_foto_file').click()">📷 Tirar foto / Escolher imagem</button>
+      </div>
+      <div id="fotoPreview" style="display:none;margin-top:10px;text-align:center">
+        <img id="fotoImg" style="max-width:100%;max-height:260px;border-radius:10px;border:1px solid #d0d7e2">
+        <div id="fotoInfo" style="font-size:.72rem;color:#888;margin-top:4px"></div>
+        <button type="button" class="btn btn-gray" style="margin-top:8px" onclick="removerFoto()">🗑️ Remover foto</button>
+      </div>
+    </div>`;
+
+  // Restaura preview se já havia foto selecionada (form pode ser reconstruído quando Firestore atualiza)
+  if (fotoBase64) {
+    const img = document.getElementById('fotoImg');
+    if (img) { img.src = fotoBase64; document.getElementById('fotoPreview').style.display = 'block'; }
+  }
 }
 
 function buildCampoHtml(c) {
@@ -349,7 +370,7 @@ window.enviar = async function() {
     }
     vals[id] = v;
   }
-  const foto = document.getElementById('f_foto')?.value?.trim() || '';
+  const foto = fotoBase64;
 
   document.getElementById('fLoad').style.display = 'block';
   try {
@@ -386,7 +407,64 @@ window.enviar = async function() {
 window.limparForm = function() {
   document.querySelectorAll('#camposDinamicos input, #camposDinamicos select, #camposDinamicos textarea').forEach(el => el.value = '');
   document.getElementById('fErr').style.display = 'none';
+  removerFoto();
 };
+
+// ──────────────────────────────
+// FOTO (CÂMERA / GALERIA)
+// ──────────────────────────────
+window.processarFoto = async function(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const err = document.getElementById('fErr');
+  try {
+    const img = await carregarImagem(file);
+    const { w, h } = redimensionar(img.width, img.height, FOTO_MAX_DIM);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    fotoBase64 = canvas.toDataURL('image/jpeg', FOTO_QUALIDADE);
+
+    const kb = Math.round(fotoBase64.length * 0.75 / 1024); // base64 ≈ 4/3 do bin
+    document.getElementById('fotoImg').src = fotoBase64;
+    document.getElementById('fotoInfo').textContent = `${w}×${h} · ~${kb} KB`;
+    document.getElementById('fotoPreview').style.display = 'block';
+    err.style.display = 'none';
+  } catch (ex) {
+    console.error(ex);
+    err.textContent = '❌ Erro ao processar a imagem. Tente outra foto.';
+    err.style.display = 'block';
+    fotoBase64 = '';
+  }
+};
+
+window.removerFoto = function() {
+  fotoBase64 = '';
+  const input = document.getElementById('f_foto_file');
+  if (input) input.value = '';
+  const prev = document.getElementById('fotoPreview');
+  if (prev) prev.style.display = 'none';
+};
+
+function carregarImagem(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('imagem inválida'));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error('leitura falhou'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function redimensionar(w, h, max) {
+  if (w <= max && h <= max) return { w, h };
+  const ratio = w > h ? max / w : max / h;
+  return { w: Math.round(w * ratio), h: Math.round(h * ratio) };
+}
 
 window.novoForm = function() {
   limparForm();

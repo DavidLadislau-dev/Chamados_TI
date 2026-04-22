@@ -480,7 +480,14 @@ window.verDetalhe=function(id){
   let info='';
   [['Setor',r.setor],['Tipo',r.tipo],['Prioridade',r.status],['Abertura',fmtDt(r.criadoEm)],['Início atend.',fmtDt(r.inicio)],['Conclusão',fmtDt(r.conclusao)],['Tempo útil',r.res]].filter(([,v])=>v).forEach(([k,v])=>{info+=`<div class="modal-field"><b>${k}</b><p>${v}</p></div>`;});
   info+=`<div class="modal-field"><b>Descrição</b><p>${r.desc||''}</p></div>`;
-  if(r.foto)info+=`<div class="modal-field"><b>Foto</b><p><a href="${r.foto}" target="_blank">Ver imagem</a></p></div>`;
+  if(r.foto){
+    const ehImagem = r.foto.startsWith('data:image') || /\.(png|jpe?g|gif|webp|bmp)(\?|$)/i.test(r.foto);
+    info += `<div class="modal-field"><b>Foto</b>` +
+      (ehImagem
+        ? `<p><a href="${r.foto}" target="_blank"><img src="${r.foto}" style="max-width:100%;max-height:320px;border-radius:8px;cursor:zoom-in;border:1px solid #ddd" alt="Foto do chamado"></a></p>`
+        : `<p><a href="${r.foto}" target="_blank">Ver imagem</a></p>`) +
+      `</div>`;
+  }
   document.getElementById('mInfo').innerHTML=info;
   document.getElementById('mSit').value=r.sit||'ABERTO';
   const solC=campos.find(c=>c.id==='sol');
