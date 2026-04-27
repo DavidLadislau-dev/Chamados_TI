@@ -116,8 +116,10 @@ footer{text-align:center;padding:12px;font-size:.72rem;color:#bbb}
 .chat-fechado{padding:12px;text-align:center;font-size:.81rem;color:#888;background:#f0f4f8;border-top:1px solid #e0e7ef;font-weight:600;flex-shrink:0}
 .chat-empty{text-align:center;color:#aaa;font-size:.81rem;padding:24px 8px}
 @keyframes cfade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-.chamado-item{cursor:pointer;transition:transform .15s}
+.chamado-item{cursor:pointer;transition:transform .15s;position:relative}
 .chamado-item:active{transform:scale(.985)}
+.msg-badge{display:inline-block;background:#e53935;color:#fff;border-radius:10px;padding:2px 8px;font-size:.7rem;font-weight:800;animation:msgPulse 1.5s infinite}
+@keyframes msgPulse{0%,100%{box-shadow:0 0 0 0 rgba(229,57,53,.6)}50%{box-shadow:0 0 0 6px rgba(229,57,53,0)}}
 </style>
 </head>
 <body>
@@ -307,6 +309,7 @@ window.selecionarUsuario = function(nome) {
   document.getElementById('meusNome').textContent = nome;
   buildForm();
   carregarMeusChamados();
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 };
 
 window.trocarUsuario = function() {
@@ -531,20 +534,38 @@ window.verMeusChamados = function() {
 // ──────────────────────────────
 // MEUS CHAMADOS (TEMPO REAL)
 // ──────────────────────────────
+let primeiraCargaMeus = true;
 function carregarMeusChamados() {
   if (!db || !usuarioAtual) return;
   if (meusUnsubscribe) meusUnsubscribe();
+  primeiraCargaMeus = true;
   // Sem orderBy para evitar exigência de índice composto no Firestore
   // Ordenação feita no cliente
   const q = query(collection(db,'chamados'), where('nome','==', usuarioAtual));
   meusUnsubscribe = onSnapshot(q, snap => {
-    todosMeusChamados = snap.docs
-      .map(d => ({_id:d.id,...d.data()}))
-      .sort((a,b) => {
-        const ta = a.criadoEm?.toDate?.()?.getTime() || 0;
-        const tb = b.criadoEm?.toDate?.()?.getTime() || 0;
-        return tb - ta; // mais recente primeiro
+    const novos = snap.docs.map(d => ({_id:d.id,...d.data()}));
+    const mapaAntigo = Object.fromEntries(todosMeusChamados.map(d=>[d._id,d]));
+    if (!primeiraCargaMeus) {
+      novos.forEach(n => {
+        const ant = mapaAntigo[n._id];
+        const novoUnread = n.unreadColab||0;
+        const antUnread = ant?.unreadColab||0;
+        if (novoUnread > antUnread && n._id !== chatId) {
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(`💬 Resposta · #${n.num||''}`, {
+              body: `${n.ultimaMsgAutor||'T.I.'}: ${n.ultimaMsg||''}`,
+              tag: 'msg-'+n._id
+            });
+          }
+        }
       });
+    }
+    primeiraCargaMeus = false;
+    todosMeusChamados = novos.sort((a,b) => {
+      const ta = a.criadoEm?.toDate?.()?.getTime() || 0;
+      const tb = b.criadoEm?.toDate?.()?.getTime() || 0;
+      return tb - ta;
+    });
     renderMeusChamados();
   }, err => {
     console.error('Firestore error:', err);
@@ -570,6 +591,7 @@ function renderMeusChamados() {
     const sitKey = (r.sit||'ABERTO').replace(/\s/g,'-');
     const badgeKey = (r.sit||'ABERTO').replace(/\s/g,'');
     const encerrado = r.sit==='CONCLUIDO'||r.sit==='CANCELADO';
+    const unread = r.unreadColab||0;
     return `<div class="chamado-item c-${sitKey}" onclick="abrirChat('${r._id}')">
       <div class="chamado-topo">
         <div>
@@ -577,7 +599,10 @@ function renderMeusChamados() {
           <b style="display:block;font-size:.88rem;margin:2px 0">${r.tipo||''}</b>
           <span style="font-size:.76rem;color:#777">${r.setor||''}</span>
         </div>
-        <span class="badge b-${badgeKey}">${r.sit||'ABERTO'}</span>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+          <span class="badge b-${badgeKey}">${r.sit||'ABERTO'}</span>
+          ${unread>0?`<span class="msg-badge">💬 ${unread}</span>`:''}
+        </div>
       </div>
       <p style="font-size:.83rem;color:#444;margin:6px 0;line-height:1.5">${r.desc||''}</p>
       <div style="font-size:.72rem;color:#999;display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
@@ -618,6 +643,7 @@ window.abrirChat = function(id) {
 
   if (chatUnsub) chatUnsub();
   if (!db) return;
+  if ((r.unreadColab||0) > 0) updateDoc(doc(db,'chamados',id), {unreadColab:0}).catch(()=>{});
   chatUnsub = onSnapshot(query(collection(db,'chamados',id,'mensagens'),orderBy('criadoEm','asc')), snap => {
     const msgs = document.getElementById('chatMsgs');
     if (snap.empty) { msgs.innerHTML = '<div class="chat-empty">Sem mensagens. Diga olá ao técnico!</div>'; return; }
@@ -652,6 +678,12 @@ window.enviarMensagemChat = async function() {
   try {
     await addDoc(collection(db,'chamados',chatId,'mensagens'), {
       texto: txt, autor: usuarioAtual, lado: 'colab', criadoEm: serverTimestamp()
+    });
+    await updateDoc(doc(db,'chamados',chatId), {
+      unreadTec: increment(1),
+      ultimaMsg: txt.slice(0,80),
+      ultimaMsgAutor: usuarioAtual,
+      ultimaMsgTs: serverTimestamp()
     });
   } catch (e) {
     inp.value = txt;

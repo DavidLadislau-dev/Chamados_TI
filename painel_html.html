@@ -52,6 +52,8 @@ tr:hover td{background:#f5f8fb}
 .pag button:disabled{opacity:.4;cursor:not-allowed}
 .pag button.active{background:var(--azul);color:#fff;border-color:var(--azul)}
 .novo-badge{background:#e53935;color:#fff;border-radius:50%;font-size:.65rem;font-weight:700;padding:1px 5px;margin-left:4px;display:none}
+.msg-badge{display:inline-block;background:#e53935;color:#fff;border-radius:10px;padding:1px 7px;font-size:.65rem;font-weight:800;margin-left:5px;min-width:18px;text-align:center;animation:msgPulse 1.5s infinite}
+@keyframes msgPulse{0%,100%{box-shadow:0 0 0 0 rgba(229,57,53,.6)}50%{box-shadow:0 0 0 5px rgba(229,57,53,0)}}
 .sync-badge{font-size:.7rem;background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:10px;margin-left:8px;font-weight:700;display:none}
 /* MODAL */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:16px}
@@ -400,7 +402,7 @@ body.dark .kpi.p{border-color:#9e57b3}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc, setDoc, getDoc, addDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc, setDoc, getDoc, addDoc, increment, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ============================================================
 const firebaseConfig = {
@@ -478,13 +480,32 @@ try {
   // Listener tempo real dos chamados
   let primeiraVez=true, totalAnterior=0;
   onSnapshot(query(collection(db,'chamados'),orderBy('criadoEm','desc')), snap=>{
-    dados=snap.docs.map(d=>({_id:d.id,...d.data()}));
-    if(!primeiraVez&&dados.length>totalAnterior){
-      const diff=dados.length-totalAnterior;
-      showToast(`🔔 ${diff} novo(s) chamado(s)!`);
-      const b=document.getElementById('novoBadge');b.style.display='inline';b.textContent=diff;
-      if(Notification.permission==='granted') new Notification('Novo Chamado T.I.',{body:`${diff} novo(s) chamado(s)`});
+    const novos=snap.docs.map(d=>({_id:d.id,...d.data()}));
+    const mapaAntigo=Object.fromEntries(dados.map(d=>[d._id,d]));
+    if(!primeiraVez){
+      // Notifica novas mensagens (unreadTec aumentou)
+      novos.forEach(n=>{
+        const ant=mapaAntigo[n._id];
+        const novoUnread=n.unreadTec||0;
+        const antUnread=ant?.unreadTec||0;
+        if(novoUnread>antUnread && n._id!==modalDocId){
+          showToast(`💬 Nova mensagem em #${n.num||'—'}`);
+          if(Notification.permission==='granted'){
+            new Notification(`Mensagem · #${n.num||''} · ${n.nome||''}`,{
+              body:`${n.ultimaMsgAutor||''}: ${n.ultimaMsg||''}`,
+              tag:'msg-'+n._id
+            });
+          }
+        }
+      });
+      if(novos.length>totalAnterior){
+        const diff=novos.length-totalAnterior;
+        showToast(`🔔 ${diff} novo(s) chamado(s)!`);
+        const b=document.getElementById('novoBadge');b.style.display='inline';b.textContent=diff;
+        if(Notification.permission==='granted') new Notification('Novo Chamado T.I.',{body:`${diff} novo(s) chamado(s)`});
+      }
     }
+    dados=novos;
     totalAnterior=dados.length;primeiraVez=false;
     popularFiltroSetor();renderTabela();renderDash();
   });
@@ -545,8 +566,10 @@ function renderTabela(){
   sl.forEach((r,i)=>{
     const n=(pag-1)*POR_PAG+i+1;
     const numFmt = r.num ? '#'+String(r.num).padStart(5,'0') : String(n).padStart(5,'0');
+    const unread = r.unreadTec||0;
+    const badge = unread>0 ? `<span class="msg-badge">💬 ${unread}</span>` : '';
     tb.innerHTML+=`<tr style="cursor:pointer" onclick="verDetalhe('${r._id}')">
-      <td><b style="color:var(--azul)">${numFmt}</b></td><td style="white-space:nowrap;font-size:.72rem">${fmtDt(r.criadoEm)}</td>
+      <td><b style="color:var(--azul)">${numFmt}</b>${badge}</td><td style="white-space:nowrap;font-size:.72rem">${fmtDt(r.criadoEm)}</td>
       <td><b>${r.nome||'—'}</b></td><td>${r.setor||''}</td>
       <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.tipo||''}</td>
       <td class="desc-c" title="${r.desc||''}">${r.desc||''}</td>
@@ -650,6 +673,7 @@ function abrirChatChamado(r){
   document.getElementById('mChatTxt').value='';
   if(chatUnsub)chatUnsub();
   if(!db)return;
+  if((r.unreadTec||0)>0) updateDoc(doc(db,'chamados',r._id),{unreadTec:0}).catch(()=>{});
   chatUnsub=onSnapshot(query(collection(db,'chamados',r._id,'mensagens'),orderBy('criadoEm','asc')),snap=>{
     if(snap.empty){msgs.innerHTML='<div class="chat-empty">Sem mensagens ainda. Envie a primeira.</div>';return;}
     msgs.innerHTML='';
@@ -687,6 +711,12 @@ window.enviarMensagem=async function(){
   try{
     await addDoc(collection(db,'chamados',modalDocId,'mensagens'),{
       texto:txt,autor:tecnicoAtual,lado:'tec',criadoEm:serverTimestamp()
+    });
+    await updateDoc(doc(db,'chamados',modalDocId),{
+      unreadColab:increment(1),
+      ultimaMsg:txt.slice(0,80),
+      ultimaMsgAutor:tecnicoAtual,
+      ultimaMsgTs:serverTimestamp()
     });
   }catch(e){showToast('❌ Erro ao enviar mensagem','#c62828');inp.value=txt;}
 };
