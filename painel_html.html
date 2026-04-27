@@ -363,7 +363,10 @@ body.dark .kpi.p{border-color:#9e57b3}
     <hr style="margin:12px 0;border-color:#eee">
     <div class="form-row"><label>Alterar Situação</label>
       <select id="mSit" onchange="atualizarHintSit()">
-        <option>ABERTO</option><option>EM ANDAMENTO</option><option>CONCLUIDO</option><option>CANCELADO</option>
+        <option value="ABERTO">ABERTO</option>
+        <option value="EM ANDAMENTO">EM ANDAMENTO</option>
+        <option value="CONCLUIDO">CONCLUIDO</option>
+        <option value="CANCELADO">CANCELADO</option>
       </select>
       <div class="hint-warn" id="hintSit">⚠️ Marque "EM ANDAMENTO" antes de concluir ou cancelar.</div>
     </div>
