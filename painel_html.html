@@ -117,8 +117,11 @@ tr:hover td{background:#f5f8fb}
 .hint-warn{font-size:.72rem;color:var(--laranja);margin-top:4px;font-weight:600;display:none}
 .hint-warn.show{display:block}
 /* DARK MODE */
-body.dark{background:#0f1419;color:#d8dde3}
+body.dark{background:#0f1419;color:#d8dde3;--azul:#5b9bd5;--azul2:#7fb6e0}
 body.dark header{background:#0a1929;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+body.dark header h1{color:#d8dde3}
+body.dark .btn-blue{background:#2b5f99;color:#fff}
+body.dark .btn-blue:hover{background:#3a78bd}
 body.dark nav{background:#162231;border-bottom-color:#22344a}
 body.dark .nav-btn{color:#8a99ad}
 body.dark .nav-btn.active{color:#5b9bd5;border-bottom-color:#5b9bd5}
@@ -127,7 +130,8 @@ body.dark .sc,body.dark .dash-card,body.dark .kpi,body.dark .cc,body.dark .rank-
 body.dark .sc .l,body.dark .kpi .kl,body.dark .dash-card h3,body.dark .cc .sub,body.dark .rank-nome,body.dark .save-campos-bar p{color:#a8b3c2}
 body.dark .sc .n,body.dark .kpi .kn,body.dark .cc h3,body.dark .rank-num{color:#5b9bd5}
 body.dark table{background:#1a2535;color:#d8dde3}
-body.dark thead{background:#0a1929}
+body.dark thead{background:#0a1929;color:#fff}
+body.dark thead th{color:#fff}
 body.dark td{border-bottom-color:#22344a}
 body.dark tr:hover td{background:#22344a}
 body.dark .desc-c{color:#7fb6e0}
@@ -153,6 +157,15 @@ body.dark .b-CONCLUIDO{background:#1b3a1f;color:#7dcb82}
 body.dark .b-ABERTO{background:#3d2510;color:#ffa863}
 body.dark .b-EMANDAMENTO{background:#10293d;color:#5b9bd5}
 body.dark .b-CANCELADO{background:#3d1419;color:#ff7d7d}
+/* Override de inline styles na aba Relatórios e outras */
+body.dark [style*="background:#fff"]{background:#1a2535 !important}
+body.dark [style*="color:#555"],body.dark [style*="color:#444"],body.dark [style*="color:#666"]{color:#a8b3c2 !important}
+body.dark [style*="color:#777"],body.dark [style*="color:#888"],body.dark [style*="color:#999"],body.dark [style*="color:#aaa"]{color:#8a99ad !important}
+body.dark [style*="color:#222"],body.dark [style*="color:#333"]{color:#d8dde3 !important}
+body.dark [style*="color:var(--verde)"]{color:#7dcb82 !important}
+body.dark [style*="color:var(--laranja)"]{color:#ffa863 !important}
+body.dark .kpi.p .kn{color:#c98ad8}
+body.dark .kpi.p{border-color:#9e57b3}
 </style>
 </head>
 <body>
@@ -385,15 +398,21 @@ function tick(){const n=new Date();document.getElementById('clock').textContent=
 tick();setInterval(tick,1000);
 
 // TEMA
+function aplicarTemaCharts(dark){
+  if(typeof Chart==='undefined')return;
+  Chart.defaults.color=dark?'#a8b3c2':'#666';
+  Chart.defaults.borderColor=dark?'#22344a':'#ddd';
+}
 (function initTema(){
   const t=localStorage.getItem('painel-tema');
-  if(t==='dark'){document.body.classList.add('dark');document.getElementById('themeBtn').textContent='☀️';}
+  if(t==='dark'){document.body.classList.add('dark');document.getElementById('themeBtn').textContent='☀️';aplicarTemaCharts(true);}
 })();
 window.toggleTheme=function(){
   const dark=document.body.classList.toggle('dark');
   localStorage.setItem('painel-tema',dark?'dark':'light');
   document.getElementById('themeBtn').textContent=dark?'☀️':'🌙';
-  Object.values(chartInstances).forEach(c=>c&&c.update());
+  aplicarTemaCharts(dark);
+  if(document.getElementById('page-relatorios').classList.contains('active')) atualizarRelatorio();
 };
 
 // ATUALIZAR LISTA
@@ -756,6 +775,8 @@ window.atualizarRelatorio = function() {
     const k = dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
     if (porDia[k] !== undefined) porDia[k]++;
   });
+  const ehDark=document.body.classList.contains('dark');
+  const corLinha=ehDark?'#5b9bd5':'#1a3a5c';
   criarChart('cPorDia', {
     type: 'line',
     data: {
@@ -763,8 +784,8 @@ window.atualizarRelatorio = function() {
       datasets: [{
         label: 'Chamados',
         data: Object.values(porDia),
-        borderColor: '#1a3a5c', backgroundColor: '#1a3a5c22',
-        tension: 0.4, fill: true, pointRadius: 3, pointBackgroundColor: '#1a3a5c'
+        borderColor: corLinha, backgroundColor: corLinha+'33',
+        tension: 0.4, fill: true, pointRadius: 3, pointBackgroundColor: corLinha
       }]
     },
     options: { responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{stepSize:1}}} }
