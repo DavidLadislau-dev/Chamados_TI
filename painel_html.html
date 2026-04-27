@@ -110,6 +110,49 @@ tr:hover td{background:#f5f8fb}
 .rank-num{font-size:.78rem;font-weight:800;color:var(--azul)}
 .empty{text-align:center;color:#bbb;padding:32px;font-size:.88rem}
 .realtime-badge{background:#e8f5e9;color:#2e7d32;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:8px}
+.theme-btn{background:rgba(255,255,255,.15);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:.2s}
+.theme-btn:hover{background:rgba(255,255,255,.28)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120px);background:#2e7d32;color:#fff;padding:11px 22px;border-radius:8px;font-size:.85rem;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.25);opacity:0;transition:.3s;z-index:300;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.hint-warn{font-size:.72rem;color:var(--laranja);margin-top:4px;font-weight:600;display:none}
+.hint-warn.show{display:block}
+/* DARK MODE */
+body.dark{background:#0f1419;color:#d8dde3}
+body.dark header{background:#0a1929;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+body.dark nav{background:#162231;border-bottom-color:#22344a}
+body.dark .nav-btn{color:#8a99ad}
+body.dark .nav-btn.active{color:#5b9bd5;border-bottom-color:#5b9bd5}
+body.dark .nav-btn:hover{color:#7fb6e0}
+body.dark .sc,body.dark .dash-card,body.dark .kpi,body.dark .cc,body.dark .rank-item,body.dark .save-campos-bar{background:#1a2535;color:#d8dde3;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+body.dark .sc .l,body.dark .kpi .kl,body.dark .dash-card h3,body.dark .cc .sub,body.dark .rank-nome,body.dark .save-campos-bar p{color:#a8b3c2}
+body.dark .sc .n,body.dark .kpi .kn,body.dark .cc h3,body.dark .rank-num{color:#5b9bd5}
+body.dark table{background:#1a2535;color:#d8dde3}
+body.dark thead{background:#0a1929}
+body.dark td{border-bottom-color:#22344a}
+body.dark tr:hover td{background:#22344a}
+body.dark .desc-c{color:#7fb6e0}
+body.dark input,body.dark select,body.dark textarea{background:#0f1721;color:#d8dde3;border-color:#2a3a52}
+body.dark input::placeholder{color:#6b7a8e}
+body.dark .toolbar input,body.dark .toolbar select{background:#0f1721;color:#d8dde3}
+body.dark .modal{background:#1a2535;color:#d8dde3}
+body.dark .modal h3{color:#5b9bd5}
+body.dark .modal-field b{color:#a8b3c2}
+body.dark .modal-field p{color:#d8dde3}
+body.dark .form-row label{color:#a8b3c2}
+body.dark .btn-gray{background:#2a3a52;color:#d8dde3}
+body.dark .btn-gray:hover{background:#34465f}
+body.dark .pag button{background:#1a2535;color:#d8dde3;border-color:#2a3a52}
+body.dark .pag{color:#a8b3c2}
+body.dark .bar-bg{background:#22344a}
+body.dark .tag{background:#22344a;color:#7fb6e0}
+body.dark .empty{color:#6b7a8e}
+body.dark hr{border-color:#22344a !important}
+body.dark .save-campos-bar{border-top-color:#22344a}
+body.dark .cc-actions{border-top-color:#22344a}
+body.dark .b-CONCLUIDO{background:#1b3a1f;color:#7dcb82}
+body.dark .b-ABERTO{background:#3d2510;color:#ffa863}
+body.dark .b-EMANDAMENTO{background:#10293d;color:#5b9bd5}
+body.dark .b-CANCELADO{background:#3d1419;color:#ff7d7d}
 </style>
 </head>
 <body>
@@ -117,6 +160,7 @@ tr:hover td{background:#f5f8fb}
   <span class="online-dot" id="onlineDot"></span>
   <h1>🖥️ Painel T.I. <span class="realtime-badge" id="rtBadge" style="display:none">● ONLINE</span></h1>
   <span id="clock"></span>
+  <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Alternar tema">🌙</button>
 </header>
 <nav>
   <button class="nav-btn active" onclick="goPage('dashboard')">📊 Dashboard</button>
@@ -139,6 +183,7 @@ tr:hover td{background:#f5f8fb}
     <select id="fSit" onchange="renderTabela()"><option value="">Todas Situações</option><option>ABERTO</option><option>EM ANDAMENTO</option><option>CONCLUIDO</option><option>CANCELADO</option></select>
     <select id="fPrio" onchange="renderTabela()"><option value="">Todas Prio.</option><option value="🔴">🔴 Emergencial</option><option value="🟠">🟠 Urgente</option><option value="🟡">🟡 Normal</option><option value="🟢">🟢 Demanda</option></select>
     <select id="fSetor" onchange="renderTabela()"><option value="">Todos Setores</option></select>
+    <button class="btn btn-blue" onclick="atualizarLista()" title="Atualizar lista">🔄 Atualizar</button>
   </div>
   <div class="table-wrap">
     <table><thead><tr><th>#</th><th>Data</th><th>Nome</th><th>Setor</th><th>Tipo</th><th>Descrição</th><th>Prioridade</th><th>Situação</th><th>Tempo</th><th>Por</th><th>Ação</th></tr></thead>
@@ -268,9 +313,10 @@ tr:hover td{background:#f5f8fb}
     <div id="mInfo"></div>
     <hr style="margin:12px 0;border-color:#eee">
     <div class="form-row"><label>Alterar Situação</label>
-      <select id="mSit">
+      <select id="mSit" onchange="atualizarHintSit()">
         <option>ABERTO</option><option>EM ANDAMENTO</option><option>CONCLUIDO</option><option>CANCELADO</option>
       </select>
+      <div class="hint-warn" id="hintSit">⚠️ Marque "EM ANDAMENTO" antes de concluir ou cancelar.</div>
     </div>
     <div class="form-row"><label>Solucionado Por</label><select id="mSol"></select></div>
     <div class="modal-btns">
@@ -337,6 +383,31 @@ let campos = [
 // RELÓGIO
 function tick(){const n=new Date();document.getElementById('clock').textContent=n.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'})+' '+n.toLocaleTimeString('pt-BR');}
 tick();setInterval(tick,1000);
+
+// TEMA
+(function initTema(){
+  const t=localStorage.getItem('painel-tema');
+  if(t==='dark'){document.body.classList.add('dark');document.getElementById('themeBtn').textContent='☀️';}
+})();
+window.toggleTheme=function(){
+  const dark=document.body.classList.toggle('dark');
+  localStorage.setItem('painel-tema',dark?'dark':'light');
+  document.getElementById('themeBtn').textContent=dark?'☀️':'🌙';
+  Object.values(chartInstances).forEach(c=>c&&c.update());
+};
+
+// ATUALIZAR LISTA
+window.atualizarLista=function(){renderTabela();showToast('🔄 Lista atualizada');};
+
+// HINT bloqueio situação
+window.atualizarHintSit=function(){
+  const sel=document.getElementById('mSit');
+  const r=dados.find(d=>d._id===modalDocId);
+  if(!r)return;
+  const podeFinalizar=!!r.inicio||r.sit==='EM ANDAMENTO';
+  const querFinalizar=sel.value==='CONCLUIDO'||sel.value==='CANCELADO';
+  document.getElementById('hintSit').classList.toggle('show',querFinalizar&&!podeFinalizar);
+};
 
 // FIREBASE
 try {
@@ -489,7 +560,15 @@ window.verDetalhe=function(id){
       `</div>`;
   }
   document.getElementById('mInfo').innerHTML=info;
-  document.getElementById('mSit').value=r.sit||'ABERTO';
+  const sitSel=document.getElementById('mSit');
+  sitSel.value=r.sit||'ABERTO';
+  const podeFinalizar=!!r.inicio||r.sit==='EM ANDAMENTO';
+  [...sitSel.options].forEach(o=>{
+    const bloq=(o.value==='CONCLUIDO'||o.value==='CANCELADO')&&!podeFinalizar;
+    o.disabled=bloq;
+    o.textContent=bloq?o.value+' 🔒':o.value;
+  });
+  atualizarHintSit();
   const solC=campos.find(c=>c.id==='sol');
   const mSol=document.getElementById('mSol');
   mSol.innerHTML='<option value="">— sem técnico —</option>';
@@ -503,6 +582,10 @@ window.salvarModal=async function(){
   const r=dados.find(d=>d._id===modalDocId);if(!r)return;
   const newSit=document.getElementById('mSit').value;
   const newSol=document.getElementById('mSol').value;
+  if((newSit==='CONCLUIDO'||newSit==='CANCELADO')&&!r.inicio&&r.sit!=='EM ANDAMENTO'){
+    showToast('⚠️ Marque "EM ANDAMENTO" antes de concluir/cancelar.','#e65100');
+    return;
+  }
   const update={sit:newSit,sol:newSol};
   const now=serverTimestamp();
   if(newSit==='EM ANDAMENTO'&&!r.inicio) update.inicio=now;
