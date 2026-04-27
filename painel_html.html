@@ -116,6 +116,31 @@ tr:hover td{background:#f5f8fb}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .hint-warn{font-size:.72rem;color:var(--laranja);margin-top:4px;font-weight:600;display:none}
 .hint-warn.show{display:block}
+/* CHAT */
+.chat-area{margin:12px 0;border:1px solid #e0e7ef;border-radius:8px;background:#f8fafc;display:flex;flex-direction:column;overflow:hidden}
+.chat-head{padding:7px 11px;background:#e8eef5;font-size:.74rem;font-weight:700;color:var(--azul);border-bottom:1px solid #d8e1ec;display:flex;justify-content:space-between;align-items:center}
+.chat-msgs{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px;min-height:140px;max-height:240px}
+.chat-msg{max-width:82%;padding:6px 11px;border-radius:12px;font-size:.79rem;line-height:1.35;word-break:break-word;animation:cfade .18s}
+.chat-msg.tec{align-self:flex-end;background:var(--azul);color:#fff;border-bottom-right-radius:3px}
+.chat-msg.colab{align-self:flex-start;background:#fff;color:#222;border:1px solid #d8e1ec;border-bottom-left-radius:3px}
+.chat-msg .au{display:block;font-size:.64rem;font-weight:700;opacity:.85;margin-bottom:2px}
+.chat-msg .ts{display:block;font-size:.6rem;opacity:.65;text-align:right;margin-top:2px}
+.chat-input{display:flex;gap:6px;padding:7px;border-top:1px solid #e0e7ef;background:#fff}
+.chat-input input{flex:1;padding:7px 11px;border:1px solid #d0d7e2;border-radius:6px;font-size:.81rem}
+.chat-input button{padding:7px 14px;background:var(--azul);color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:.81rem}
+.chat-input button:disabled,.chat-input input:disabled{opacity:.5;cursor:not-allowed}
+.chat-fechado{padding:8px 10px;text-align:center;font-size:.74rem;color:#888;background:#f0f4f8;border-top:1px solid #e0e7ef;font-weight:600}
+.chat-empty{text-align:center;color:#aaa;font-size:.74rem;padding:20px 8px}
+@keyframes cfade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+body.dark .chat-area{background:#0f1721;border-color:#22344a}
+body.dark .chat-head{background:#162231;color:#7fb6e0;border-bottom-color:#22344a}
+body.dark .chat-msg.colab{background:#1a2535;color:#d8dde3;border-color:#22344a}
+body.dark .chat-msg.tec{background:#2b5f99;color:#fff}
+body.dark .chat-input{background:#162231;border-top-color:#22344a}
+body.dark .chat-input input{background:#0f1721;color:#d8dde3;border-color:#22344a}
+body.dark .chat-input button{background:#2b5f99;color:#fff}
+body.dark .chat-fechado{background:#0f1721;color:#8a99ad;border-top-color:#22344a}
+body.dark .chat-empty{color:#6b7a8e}
 /* DARK MODE */
 body.dark{background:#0f1419;color:#d8dde3;--azul:#5b9bd5;--azul2:#7fb6e0}
 body.dark header{background:#0a1929;box-shadow:0 2px 8px rgba(0,0,0,.5)}
@@ -324,6 +349,15 @@ body.dark .kpi.p{border-color:#9e57b3}
   <div class="modal">
     <h3 id="mTit"></h3>
     <div id="mInfo"></div>
+    <div class="chat-area" id="mChat">
+      <div class="chat-head"><span>💬 Chat do chamado</span><span id="mChatStatus" onclick="trocarTecnico()" style="font-weight:500;font-size:.7rem;opacity:.75;cursor:pointer" title="Clique para trocar"></span></div>
+      <div class="chat-msgs" id="mChatMsgs"><div class="chat-empty">Carregando...</div></div>
+      <div class="chat-input" id="mChatInput">
+        <input type="text" id="mChatTxt" placeholder="Escreva uma mensagem..." onkeydown="if(event.key==='Enter')enviarMensagem()" maxlength="500">
+        <button onclick="enviarMensagem()">Enviar</button>
+      </div>
+      <div class="chat-fechado" id="mChatFechado" style="display:none">🔒 Chat encerrado — chamado finalizado.</div>
+    </div>
     <hr style="margin:12px 0;border-color:#eee">
     <div class="form-row"><label>Alterar Situação</label>
       <select id="mSit" onchange="atualizarHintSit()">
@@ -366,7 +400,7 @@ body.dark .kpi.p{border-color:#9e57b3}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc, setDoc, getDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc, setDoc, getDoc, addDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ============================================================
 const firebaseConfig = {
@@ -379,7 +413,8 @@ const firebaseConfig = {
 };
 // ============================================================
 
-let dados=[], pag=1, POR_PAG=15, modalDocId=null, db=null;
+let dados=[], pag=1, POR_PAG=15, modalDocId=null, db=null, chatUnsub=null;
+let tecnicoAtual = localStorage.getItem('painel-tecnico') || 'DAVID';
 let campos = [
   {id:'nome',label:'Nome / Identificação',type:'select',required:true,locked:true,
    options:['ALEX CASTELO','AMANDA FAVACHO','AMANDA PIEDADE','ANA PAULA','ANDREIA DAMASCENO','BIANCA NORONHA','BRUNA COSTA','BRUNO CAVALCANTE','CAMILA DONATO','CARLOS COSTA','CLAUDETE CONCEIÇÃO','CLEIDE AMANAJÁS','DANIELLE ROSA','DAVID JESUS','DAYANE ALMEIDA','DÉBORA BORGES','EDILSON JUNIOR','EDSON DUARTE','FRANCY BRITO','GEORGINA ULIANA','GIOVANNI CUNHA','GIRLEIDE SILVA','GUSTAVO SUP.TECNICO','HUATILA RODRIGUES','ICARO SANTOS','INGREDY SILVA','ISAIAS MALCHER','IZABELA FERREIRA','JAMILY CRUZ','JOYSE SENA','JOZIANA ROSARIO','JULIANA AROUCA','KAREN RESENDE','KELLY PASSOS','LABELLE PEREIRA','LETICIA ESCAMILLA','LUCIENE RODRIGUES','MARCUS ARAUJO','MARCOS DA SILVA','MARCOS SENA','MARIANA FRAZÃO','NAIANE SODRE','NATAN RIBEIRO','ORLANDO LIMA','PAMELA MIRANDA','RAIMUNDA BARBÁRA','RAYLENE LOBATO','ROBERTO NASCIMENTO','SIMONE SANTOS','SOCORRO AFONSO','SUELLEN MAXIMIANO','TAINÁ CASTRO','TAYNARA ARCANJO','TIAGO NASCIMENTO','VALERIA SOUZA','WARLEN','MALU MATOS']},
@@ -592,9 +627,69 @@ window.verDetalhe=function(id){
   const mSol=document.getElementById('mSol');
   mSol.innerHTML='<option value="">— sem técnico —</option>';
   (solC?solC.options:[]).forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;if(r.sol===t)o.selected=true;mSol.appendChild(o);});
+  abrirChatChamado(r);
   document.getElementById('modalBg').classList.add('open');
 };
-window.fecharModal=()=>{document.getElementById('modalBg').classList.remove('open');modalDocId=null;};
+window.fecharModal=()=>{
+  document.getElementById('modalBg').classList.remove('open');
+  modalDocId=null;
+  if(chatUnsub){chatUnsub();chatUnsub=null;}
+};
+
+// CHAT
+function abrirChatChamado(r){
+  const msgs=document.getElementById('mChatMsgs');
+  const inputDiv=document.getElementById('mChatInput');
+  const fechado=document.getElementById('mChatFechado');
+  const status=document.getElementById('mChatStatus');
+  const encerrado=r.sit==='CONCLUIDO'||r.sit==='CANCELADO';
+  inputDiv.style.display=encerrado?'none':'flex';
+  fechado.style.display=encerrado?'block':'none';
+  status.textContent=encerrado?'🔒 Encerrado':`Você: ${tecnicoAtual}`;
+  msgs.innerHTML='<div class="chat-empty">Carregando...</div>';
+  document.getElementById('mChatTxt').value='';
+  if(chatUnsub)chatUnsub();
+  if(!db)return;
+  chatUnsub=onSnapshot(query(collection(db,'chamados',r._id,'mensagens'),orderBy('criadoEm','asc')),snap=>{
+    if(snap.empty){msgs.innerHTML='<div class="chat-empty">Sem mensagens ainda. Envie a primeira.</div>';return;}
+    msgs.innerHTML='';
+    snap.forEach(d=>{
+      const m=d.data();
+      const div=document.createElement('div');
+      div.className='chat-msg '+(m.lado==='tec'?'tec':'colab');
+      const t=m.criadoEm?.toDate?.();
+      div.innerHTML=`<span class="au">${m.autor||''}</span>${escapeHtml(m.texto||'')}<span class="ts">${t?t.toLocaleTimeString('pt-BR').slice(0,5)+' '+t.toLocaleDateString('pt-BR'):''}</span>`;
+      msgs.appendChild(div);
+    });
+    msgs.scrollTop=msgs.scrollHeight;
+  });
+}
+
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
+
+window.trocarTecnico=function(){
+  const novo=prompt('Identificação do técnico:',tecnicoAtual);
+  if(!novo||!novo.trim())return;
+  tecnicoAtual=novo.trim().toUpperCase();
+  localStorage.setItem('painel-tecnico',tecnicoAtual);
+  const r=dados.find(d=>d._id===modalDocId);
+  if(r)abrirChatChamado(r);
+};
+
+window.enviarMensagem=async function(){
+  if(!modalDocId||!db)return;
+  const r=dados.find(d=>d._id===modalDocId);if(!r)return;
+  if(r.sit==='CONCLUIDO'||r.sit==='CANCELADO'){showToast('🔒 Chat encerrado','#888');return;}
+  const inp=document.getElementById('mChatTxt');
+  const txt=inp.value.trim();
+  if(!txt)return;
+  inp.value='';
+  try{
+    await addDoc(collection(db,'chamados',modalDocId,'mensagens'),{
+      texto:txt,autor:tecnicoAtual,lado:'tec',criadoEm:serverTimestamp()
+    });
+  }catch(e){showToast('❌ Erro ao enviar mensagem','#c62828');inp.value=txt;}
+};
 
 window.salvarModal=async function(){
   if(!modalDocId||!db)return;
