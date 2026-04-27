@@ -352,7 +352,7 @@ body.dark .kpi.p{border-color:#9e57b3}
     <h3 id="mTit"></h3>
     <div id="mInfo"></div>
     <div class="chat-area" id="mChat">
-      <div class="chat-head"><span>💬 Chat do chamado</span><span id="mChatStatus" onclick="trocarTecnico()" style="font-weight:500;font-size:.7rem;opacity:.75;cursor:pointer" title="Clique para trocar"></span></div>
+      <div class="chat-head"><span>💬 Chat do chamado</span><span id="mChatStatus" style="font-weight:500;font-size:.7rem;opacity:.85"></span></div>
       <div class="chat-msgs" id="mChatMsgs"><div class="chat-empty">Carregando...</div></div>
       <div class="chat-input" id="mChatInput">
         <input type="text" id="mChatTxt" placeholder="Escreva uma mensagem..." onkeydown="if(event.key==='Enter')enviarMensagem()" maxlength="500">
@@ -367,7 +367,7 @@ body.dark .kpi.p{border-color:#9e57b3}
       </select>
       <div class="hint-warn" id="hintSit">⚠️ Marque "EM ANDAMENTO" antes de concluir ou cancelar.</div>
     </div>
-    <div class="form-row"><label>Solucionado Por</label><select id="mSol"></select></div>
+    <div class="form-row"><label>Solucionado Por (autor do chat)</label><select id="mSol" onchange="atualizarStatusChat()"></select></div>
     <div class="modal-btns">
       <button class="btn btn-red btn-sm" onclick="excluirChamado()" style="margin-right:auto">🗑️ Excluir</button>
       <button class="btn btn-gray" onclick="fecharModal()">Fechar</button>
@@ -416,7 +416,6 @@ const firebaseConfig = {
 // ============================================================
 
 let dados=[], pag=1, POR_PAG=15, modalDocId=null, db=null, chatUnsub=null;
-let tecnicoAtual = localStorage.getItem('painel-tecnico') || 'DAVID';
 let campos = [
   {id:'nome',label:'Nome / Identificação',type:'select',required:true,locked:true,
    options:['ALEX CASTELO','AMANDA FAVACHO','AMANDA PIEDADE','ANA PAULA','ANDREIA DAMASCENO','BIANCA NORONHA','BRUNA COSTA','BRUNO CAVALCANTE','CAMILA DONATO','CARLOS COSTA','CLAUDETE CONCEIÇÃO','CLEIDE AMANAJÁS','DANIELLE ROSA','DAVID JESUS','DAYANE ALMEIDA','DÉBORA BORGES','EDILSON JUNIOR','EDSON DUARTE','FRANCY BRITO','GEORGINA ULIANA','GIOVANNI CUNHA','GIRLEIDE SILVA','GUSTAVO SUP.TECNICO','HUATILA RODRIGUES','ICARO SANTOS','INGREDY SILVA','ISAIAS MALCHER','IZABELA FERREIRA','JAMILY CRUZ','JOYSE SENA','JOZIANA ROSARIO','JULIANA AROUCA','KAREN RESENDE','KELLY PASSOS','LABELLE PEREIRA','LETICIA ESCAMILLA','LUCIENE RODRIGUES','MARCUS ARAUJO','MARCOS DA SILVA','MARCOS SENA','MARIANA FRAZÃO','NAIANE SODRE','NATAN RIBEIRO','ORLANDO LIMA','PAMELA MIRANDA','RAIMUNDA BARBÁRA','RAYLENE LOBATO','ROBERTO NASCIMENTO','SIMONE SANTOS','SOCORRO AFONSO','SUELLEN MAXIMIANO','TAINÁ CASTRO','TAYNARA ARCANJO','TIAGO NASCIMENTO','VALERIA SOUZA','WARLEN','MALU MATOS']},
@@ -660,15 +659,24 @@ window.fecharModal=()=>{
 };
 
 // CHAT
+window.atualizarStatusChat=function(){
+  const r=dados.find(d=>d._id===modalDocId);if(!r)return;
+  const status=document.getElementById('mChatStatus');
+  const encerrado=r.sit==='CONCLUIDO'||r.sit==='CANCELADO';
+  if(encerrado){status.textContent='🔒 Encerrado';status.style.color='';return;}
+  const sol=document.getElementById('mSol').value;
+  if(sol){status.textContent='Você: '+sol;status.style.color='';}
+  else{status.textContent='⚠️ Selecione "Solucionado Por" para enviar';status.style.color='#ffa863';}
+};
+
 function abrirChatChamado(r){
   const msgs=document.getElementById('mChatMsgs');
   const inputDiv=document.getElementById('mChatInput');
   const fechado=document.getElementById('mChatFechado');
-  const status=document.getElementById('mChatStatus');
   const encerrado=r.sit==='CONCLUIDO'||r.sit==='CANCELADO';
   inputDiv.style.display=encerrado?'none':'flex';
   fechado.style.display=encerrado?'block':'none';
-  status.textContent=encerrado?'🔒 Encerrado':`Você: ${tecnicoAtual}`;
+  atualizarStatusChat();
   msgs.innerHTML='<div class="chat-empty">Carregando...</div>';
   document.getElementById('mChatTxt').value='';
   if(chatUnsub)chatUnsub();
@@ -691,33 +699,32 @@ function abrirChatChamado(r){
 
 function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
 
-window.trocarTecnico=function(){
-  const novo=prompt('Identificação do técnico:',tecnicoAtual);
-  if(!novo||!novo.trim())return;
-  tecnicoAtual=novo.trim().toUpperCase();
-  localStorage.setItem('painel-tecnico',tecnicoAtual);
-  const r=dados.find(d=>d._id===modalDocId);
-  if(r)abrirChatChamado(r);
-};
-
 window.enviarMensagem=async function(){
   if(!modalDocId||!db)return;
   const r=dados.find(d=>d._id===modalDocId);if(!r)return;
   if(r.sit==='CONCLUIDO'||r.sit==='CANCELADO'){showToast('🔒 Chat encerrado','#888');return;}
+  const sol=document.getElementById('mSol').value;
+  if(!sol){
+    showToast('⚠️ Selecione "Solucionado Por" antes de enviar.','#e65100');
+    document.getElementById('mSol').focus();
+    return;
+  }
   const inp=document.getElementById('mChatTxt');
   const txt=inp.value.trim();
   if(!txt)return;
   inp.value='';
   try{
     await addDoc(collection(db,'chamados',modalDocId,'mensagens'),{
-      texto:txt,autor:tecnicoAtual,lado:'tec',criadoEm:serverTimestamp()
+      texto:txt,autor:sol,lado:'tec',criadoEm:serverTimestamp()
     });
-    await updateDoc(doc(db,'chamados',modalDocId),{
+    const update={
       unreadColab:increment(1),
       ultimaMsg:txt.slice(0,80),
-      ultimaMsgAutor:tecnicoAtual,
+      ultimaMsgAutor:sol,
       ultimaMsgTs:serverTimestamp()
-    });
+    };
+    if(r.sol!==sol) update.sol=sol;
+    await updateDoc(doc(db,'chamados',modalDocId),update);
   }catch(e){showToast('❌ Erro ao enviar mensagem','#c62828');inp.value=txt;}
 };
 
