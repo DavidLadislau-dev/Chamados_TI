@@ -120,12 +120,81 @@ footer{text-align:center;padding:12px;font-size:.72rem;color:#bbb}
 .chamado-item:active{transform:scale(.985)}
 .msg-badge{display:inline-block;background:#e53935;color:#fff;border-radius:10px;padding:2px 8px;font-size:.7rem;font-weight:800;animation:msgPulse 1.5s infinite}
 @keyframes msgPulse{0%,100%{box-shadow:0 0 0 0 rgba(229,57,53,.6)}50%{box-shadow:0 0 0 6px rgba(229,57,53,0)}}
+.theme-btn{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.18);border:none;color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:.2s}
+.theme-btn:hover{background:rgba(255,255,255,.3)}
+header{position:relative}
+.theme-btn-tela{position:absolute;top:18px;right:18px;background:#1a3a5c;color:#fff;border:none;width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+/* DARK MODE */
+body.dark{background:#0f1419;color:#d8dde3;--azul:#5b9bd5;--azul2:#7fb6e0}
+body.dark #telaUsuario{background:#0f1419}
+body.dark #telaUsuario h2{color:#7fb6e0}
+body.dark #telaUsuario p{color:#8a99ad}
+body.dark .user-search input,body.dark .user-list{background:#1a2535;color:#d8dde3;border-color:#2a3a52}
+body.dark .user-search input::placeholder{color:#6b7a8e}
+body.dark .user-item{color:#d8dde3;border-bottom-color:#22344a}
+body.dark .user-item:hover{background:#22344a;color:#7fb6e0}
+body.dark .user-item .av{background:#2b5f99}
+body.dark .loading-users{color:#6b7a8e}
+body.dark header{background:#0a1929;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+body.dark .status-bar{background:#162231;color:#7fb6e0}
+body.dark .status-bar.off{background:#3d1419;color:#ff7d7d}
+body.dark nav{background:#1a2535;border-bottom-color:#22344a}
+body.dark .tab{color:#8a99ad}
+body.dark .tab.active{color:#7fb6e0;border-bottom-color:#7fb6e0}
+body.dark .card{background:#1a2535;color:#d8dde3;box-shadow:0 2px 10px rgba(0,0,0,.4)}
+body.dark .card h2{color:#7fb6e0;border-bottom-color:#22344a}
+body.dark label{color:#a8b3c2}
+body.dark input,body.dark select,body.dark textarea{background:#0f1721;color:#d8dde3;border-color:#2a3a52}
+body.dark input:focus,body.dark select:focus,body.dark textarea:focus{background:#0a1421;border-color:#5b9bd5;box-shadow:0 0 0 3px #5b9bd530}
+body.dark input::placeholder,body.dark textarea::placeholder{color:#6b7a8e}
+body.dark .btn-primary{background:#2b5f99;color:#fff}
+body.dark .btn-primary:hover{background:#3a78bd}
+body.dark .btn-sec{background:#1a2535;color:#7fb6e0;border-color:#5b9bd5}
+body.dark .btn-sec:hover{background:#22344a}
+body.dark .btn-gray{background:#22344a;color:#d8dde3}
+body.dark .btn-gray:hover{background:#2a3f5a}
+body.dark .err{background:#3d1419;color:#ff9a9a}
+body.dark .loading-txt{color:#7fb6e0}
+body.dark .user-chip{background:#162231;color:#7fb6e0}
+body.dark .user-chip:hover{background:#22344a}
+body.dark .sucesso h2{color:#7dcb82}
+body.dark .sucesso p{color:#a8b3c2}
+body.dark .num-box{background:#1b3a1f;border-color:#2e7d32}
+body.dark .num-box .n{color:#7dcb82}
+body.dark .num-box small{color:#a8b3c2}
+body.dark .chamado-item{background:#1a2535;color:#d8dde3;box-shadow:0 1px 5px rgba(0,0,0,.4)}
+body.dark .empty{color:#6b7a8e}
+body.dark .ftab{background:#1a2535;color:#a8b3c2;border-color:#2a3a52}
+body.dark .ftab.active{background:#2b5f99;color:#fff;border-color:#2b5f99}
+body.dark .b-CONCLUIDO{background:#1b3a1f;color:#7dcb82}
+body.dark .b-ABERTO{background:#3d2510;color:#ffa863}
+body.dark .b-EMANDAMENTO,body.dark .b-EM-ANDAMENTO{background:#10293d;color:#5b9bd5}
+body.dark .b-CANCELADO{background:#3d1419;color:#ff7d7d}
+body.dark footer{color:#6b7a8e}
+body.dark .modal{background:#1a2535;color:#d8dde3}
+body.dark .modal-head{border-bottom-color:#22344a}
+body.dark .modal-head h3{color:#7fb6e0}
+body.dark .modal-head button{color:#8a99ad}
+body.dark .modal-info{background:#162231;border-bottom-color:#22344a;color:#a8b3c2}
+body.dark .modal-info b{color:#7fb6e0}
+body.dark .chat-msgs{background:#0f1721}
+body.dark .chat-msg.colab{background:#2b5f99;color:#fff}
+body.dark .chat-msg.tec{background:#1a2535;color:#d8dde3;border-color:#22344a}
+body.dark .chat-input{background:#162231;border-top-color:#22344a}
+body.dark .chat-input input{background:#0f1721;color:#d8dde3;border-color:#22344a}
+body.dark .chat-input button{background:#2b5f99}
+body.dark .chat-fechado{background:#0f1721;color:#8a99ad;border-top-color:#22344a}
+body.dark .chat-empty{color:#6b7a8e}
+body.dark [style*="color:#666"],body.dark [style*="color:#777"],body.dark [style*="color:#444"]{color:#a8b3c2 !important}
+body.dark [style*="color:#999"],body.dark [style*="color:#888"],body.dark [style*="color:#aaa"]{color:#8a99ad !important}
+body.dark [style*="color:#333"],body.dark [style*="color:#222"]{color:#d8dde3 !important}
 </style>
 </head>
 <body>
 
 <!-- TELA SELEÇÃO DE USUÁRIO -->
 <div id="telaUsuario">
+  <button class="theme-btn-tela" id="themeBtnTela" onclick="toggleTheme()" title="Alternar tema">🌙</button>
   <div class="logo">🖥️</div>
   <h2>Chamados T.I.</h2>
   <p>Norte Geradores — Selecione seu nome para continuar</p>
@@ -145,6 +214,7 @@ footer{text-align:center;padding:12px;font-size:.72rem;color:#bbb}
   <header>
     <h1>🖥️ Chamados T.I.</h1>
     <p>Norte Geradores — Suporte Técnico</p>
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Alternar tema">🌙</button>
   </header>
   <div class="status-bar" id="statusBar">
     <span class="dot" id="statusDot"></span>
@@ -241,6 +311,23 @@ let fotoBase64 = '';
 let chatUnsub = null, chatId = null;
 const FOTO_MAX_DIM = 1200;
 const FOTO_QUALIDADE = 0.75;
+
+// TEMA
+function aplicarBotaoTema(){
+  const dark = document.body.classList.contains('dark');
+  const ico = dark ? '☀️' : '🌙';
+  const a = document.getElementById('themeBtn'); if(a) a.textContent = ico;
+  const b = document.getElementById('themeBtnTela'); if(b) b.textContent = ico;
+}
+(function initTema(){
+  if(localStorage.getItem('chamados-tema')==='dark') document.body.classList.add('dark');
+  aplicarBotaoTema();
+})();
+window.toggleTheme = function(){
+  const dark = document.body.classList.toggle('dark');
+  localStorage.setItem('chamados-tema', dark?'dark':'light');
+  aplicarBotaoTema();
+};
 
 // INIT FIREBASE
 try {
