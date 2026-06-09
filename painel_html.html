@@ -118,6 +118,18 @@ tr:hover td{background:#f5f8fb}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .hint-warn{font-size:.72rem;color:var(--laranja);margin-top:4px;font-weight:600;display:none}
 .hint-warn.show{display:block}
+/* KANBAN */
+.kb-board{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;align-items:flex-start}
+.kb-col{flex:1;min-width:230px;background:#eef1f5;border-radius:10px;padding:8px;display:flex;flex-direction:column;min-height:120px}
+.kb-col h4{font-size:.78rem;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px;padding:2px 4px}
+.kb-col.drag-over{outline:2px dashed var(--azul);outline-offset:-2px;background:#e3ecf6}
+.kb-card{background:#fff;border-radius:8px;padding:9px 11px;margin-bottom:7px;box-shadow:0 1px 3px rgba(0,0,0,.1);cursor:grab;border-left:3px solid #ccc}
+.kb-card:active{cursor:grabbing}
+.kb-card .t{font-size:.8rem;font-weight:600;color:#222;margin-bottom:3px}
+.kb-card .m{font-size:.68rem;color:#888;display:flex;flex-wrap:wrap;gap:7px}
+body.dark .kb-col{background:#16202e}
+body.dark .kb-card{background:#22344a;color:#d8dde3}
+body.dark .kb-card .t{color:#e3e8ee}
 /* CHAT */
 .chat-area{margin:12px 0;border:1px solid #e0e7ef;border-radius:8px;background:#f8fafc;display:flex;flex-direction:column;overflow:hidden}
 .chat-head{padding:7px 11px;background:#e8eef5;font-size:.74rem;font-weight:700;color:var(--azul);border-bottom:1px solid #d8e1ec;display:flex;justify-content:space-between;align-items:center}
@@ -247,6 +259,7 @@ body.dark .kpi.p{border-color:#9e57b3}
     <button class="btn btn-blue" onclick="abrirProjeto()">➕ Novo Projeto</button>
     <span style="margin-left:auto;display:inline-flex;gap:4px">
       <button id="vwCards" class="btn btn-blue btn-sm" onclick="projView('cards')">🗂️ Cards</button>
+      <button id="vwKanban" class="btn btn-gray btn-sm" onclick="projView('kanban')">📌 Kanban</button>
       <button id="vwCal" class="btn btn-gray btn-sm" onclick="projView('cal')">📅 Calendário</button>
     </span>
   </div>
@@ -260,6 +273,7 @@ body.dark .kpi.p{border-color:#9e57b3}
   </div>
   <div class="campos-grid" id="projGrid"></div>
   <div id="projCal" style="display:none;background:#fff;border-radius:10px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);max-width:1100px"></div>
+  <div id="projKanban" style="display:none"></div>
   <div id="projEmpty" class="empty" style="display:none">Nenhum projeto ainda. Clique em "➕ Novo Projeto".</div>
 </div>
 
@@ -278,6 +292,15 @@ body.dark .kpi.p{border-color:#9e57b3}
     <div class="form-row"><label>Técnico responsável</label><select id="pjTecnico"></select></div>
     <div class="form-row"><label>IP / Link de acesso</label><input id="pjIp" placeholder="Ex.: 192.168.10.50  ou  http://painel.local"></div>
     <div class="form-row"><label>Informações</label><textarea id="pjInfo" placeholder="Escopo, contexto, o que falta..."></textarea></div>
+    <div class="form-row">
+      <label>Atividades</label>
+      <div id="pjAtv" style="max-height:170px;overflow-y:auto;border:1px solid #eee;border-radius:6px;padding:7px;background:#fafbfc"></div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <input id="pjAtvTexto" placeholder="Nova atividade..." style="flex:1;padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:.82rem" onkeydown="if(event.key==='Enter')addAtividade()">
+        <select id="pjAtvResp" style="width:140px;padding:7px;border:1px solid #ccc;border-radius:6px;font-size:.8rem"></select>
+        <button class="btn btn-blue btn-sm" onclick="addAtividade()">Adicionar</button>
+      </div>
+    </div>
     <div class="form-row">
       <label>Observações</label>
       <div id="pjObs" style="max-height:170px;overflow-y:auto;border:1px solid #eee;border-radius:6px;padding:7px;background:#fafbfc"></div>
@@ -619,7 +642,7 @@ window.goPage=function(p){
 
 // ============================ PROJETOS ============================
 const PROJ_STATUS=['Planejado','Em andamento','Pausado','Concluído'];
-let projCal=null, projViewMode='cards';
+let projCal=null, projViewMode='cards', atvEdit=[];
 function projStatusColor(s){return {'Planejado':'#7b1fa2','Em andamento':'#1565c0','Pausado':'#e65100','Concluído':'#2e7d32'}[s]||'#777';}
 function fmtPrazo(s){if(!s)return'';const p=String(s).split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:s;}
 function escP(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -647,10 +670,11 @@ window.renderProjetos=function(){
     <div class="sc y"><div class="n">${cont('Pausado')}</div><div class="l">Pausados</div></div>
     <div class="sc g"><div class="n">${cont('Concluído')}</div><div class="l">Concluídos</div></div>`;
   const g=document.getElementById('projGrid');g.innerHTML='';
-  document.getElementById('projEmpty').style.display=(lista.length||projViewMode==='cal')?'none':'block';
+  document.getElementById('projEmpty').style.display=(projViewMode==='cards'&&!lista.length)?'block':'none';
   lista.forEach(p=>g.appendChild(cardProjeto(p)));
   renderRepos();
   if(projViewMode==='cal'&&projCal) projCal.refetchEvents();
+  if(projViewMode==='kanban') renderKanban();
 };
 
 // CALENDARIO DE PROJETOS
@@ -658,8 +682,9 @@ window.projView=function(v){
   projViewMode=v;
   document.getElementById('projGrid').style.display=(v==='cards')?'grid':'none';
   document.getElementById('projCal').style.display=(v==='cal')?'block':'none';
-  document.getElementById('vwCards').className='btn btn-sm '+(v==='cards'?'btn-blue':'btn-gray');
-  document.getElementById('vwCal').className='btn btn-sm '+(v==='cal'?'btn-blue':'btn-gray');
+  document.getElementById('projKanban').style.display=(v==='kanban')?'block':'none';
+  const setBtn=(id,on)=>document.getElementById(id).className='btn btn-sm '+(on?'btn-blue':'btn-gray');
+  setBtn('vwCards',v==='cards');setBtn('vwKanban',v==='kanban');setBtn('vwCal',v==='cal');
   if(v==='cal'){ initProjCal(); if(projCal){projCal.updateSize();projCal.refetchEvents();} }
   renderProjetos();
 };
@@ -684,10 +709,54 @@ function initProjCal(){
   projCal.render();
 }
 
+// KANBAN — colunas por status, arrastar pra mover
+window.renderKanban=function(){
+  const cont=document.getElementById('projKanban');
+  const b=(document.getElementById('projBusca').value||'').toLowerCase();
+  const ft=document.getElementById('projFTec').value;
+  const lista=projetos.filter(p=>{
+    const txt=[p.nome,p.info,p.tecnico,p.ip].join(' ').toLowerCase();
+    return (!b||txt.includes(b))&&(!ft||p.tecnico===ft);
+  });
+  cont.innerHTML='<div class="kb-board">'+PROJ_STATUS.map(s=>{
+    const cor=projStatusColor(s);
+    const itens=lista.filter(p=>(p.status||'Planejado')===s);
+    return `<div class="kb-col" data-status="${escP(s)}"
+        ondragover="event.preventDefault();this.classList.add('drag-over')"
+        ondragleave="this.classList.remove('drag-over')"
+        ondrop="kbDrop(event,this)">
+      <h4 style="color:${cor}"><span style="width:9px;height:9px;border-radius:50%;background:${cor};display:inline-block"></span> ${escP(s)} <span style="color:#999;font-weight:600">${itens.length}</span></h4>
+      ${itens.map(p=>kbCard(p,cor)).join('')||'<div style="font-size:.7rem;color:#aaa;text-align:center;padding:8px">—</div>'}
+    </div>`;
+  }).join('')+'</div>';
+};
+function kbCard(p,cor){
+  const atv=(p.atividades||[]);const af=atv.filter(a=>a.feito).length;
+  return `<div class="kb-card" draggable="true" style="border-left-color:${cor}"
+      ondragstart="event.dataTransfer.setData('text/plain','${p._id}')"
+      onclick="abrirProjeto('${p._id}')">
+    <div class="t">${escP(p.nome||'(sem nome)')}</div>
+    <div class="m">
+      ${p.tecnico?`<span>👤 ${escP(p.tecnico)}</span>`:''}
+      ${p.prazo?`<span style="color:#e65100">📅 ${fmtPrazo(p.prazo)}</span>`:''}
+      ${atv.length?`<span>✅ ${af}/${atv.length}</span>`:''}
+    </div>
+  </div>`;
+}
+window.kbDrop=async function(ev,col){
+  ev.preventDefault();col.classList.remove('drag-over');
+  const id=ev.dataTransfer.getData('text/plain');const novo=col.getAttribute('data-status');
+  if(!id||!novo||!db)return;
+  const p=projetos.find(x=>x._id===id);if(p&&p.status===novo)return;
+  try{await updateDoc(doc(db,'projetos',id),{status:novo,atualizadoEm:serverTimestamp()});showToast('📌 Movido para: '+novo);}
+  catch(e){showToast('❌ Erro ao mover','#c62828');}
+};
+
 function cardProjeto(p){
   const el=document.createElement('div');el.className='cc';
   const cor=projStatusColor(p.status);el.style.borderTopColor=cor;
   const obs=(p.observacoes||[]).length;const ip=ipHref(p.ip);
+  const atv=(p.atividades||[]);const atvFeito=atv.filter(a=>a.feito).length;
   el.innerHTML=`
     <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:3px">
       <h3 style="flex:1">${escP(p.nome||'(sem nome)')}</h3>
@@ -698,7 +767,7 @@ function cardProjeto(p){
     ${ip?`<div style="font-size:.74rem;margin-bottom:6px">🔗 <a href="${escP(ip)}" target="_blank" rel="noopener" style="color:var(--azul);font-weight:600">${escP(p.ip)}</a></div>`:''}
     ${p.info?`<div style="font-size:.78rem;color:#555;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${escP(p.info)}</div>`:''}
     <div class="cc-actions">
-      <span style="font-size:.72rem;color:#888;flex:1">📝 ${obs} observação(ões)</span>
+      <span style="font-size:.72rem;color:#888;flex:1">${atv.length?`✅ ${atvFeito}/${atv.length} · `:''}📝 ${obs}</span>
       <button class="btn btn-blue btn-sm" data-id="${p._id}">Abrir</button>
     </div>`;
   el.querySelector('button').onclick=()=>abrirProjeto(p._id);
@@ -749,10 +818,45 @@ function renderObs(arr){
     </div>`).join('');
 }
 
+// ATIVIDADES (checklist vinculada ao projeto)
+function renderAtv(arr){
+  const box=document.getElementById('pjAtv');
+  if(!arr||!arr.length){box.innerHTML='<p style="font-size:.74rem;color:#aaa;margin:2px">Sem atividades ainda.</p>';return;}
+  box.innerHTML=arr.map((a,i)=>`
+    <div style="display:flex;align-items:center;gap:7px;padding:3px 2px">
+      <span onclick="toggleAtividade(${i})" title="marcar" style="cursor:pointer;width:18px;height:18px;border:2px solid ${a.feito?'#2e7d32':'#bbb'};background:${a.feito?'#2e7d32':'#fff'};color:#fff;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex:none">${a.feito?'✓':''}</span>
+      <span style="flex:1;font-size:.8rem;${a.feito?'text-decoration:line-through;color:#999':'color:#333'}">${escP(a.texto)}${a.responsavel?` <span style="font-size:.68rem;color:#1565c0">· ${escP(a.responsavel)}</span>`:''}</span>
+      <span onclick="removeAtividade(${i})" title="remover" style="cursor:pointer;color:#c62828;font-weight:900;font-size:.9rem;padding:0 3px">×</span>
+    </div>`).join('');
+}
+function persistAtv(){
+  if(!projAtual||!db)return Promise.resolve();
+  return updateDoc(doc(db,'projetos',projAtual),{atividades:atvEdit,atualizadoEm:serverTimestamp()});
+}
+window.addAtividade=async function(){
+  const t=document.getElementById('pjAtvTexto').value.trim();
+  const resp=document.getElementById('pjAtvResp').value;
+  if(!t)return;
+  if(!projAtual){showToast('💾 Salve o projeto antes de adicionar atividades','#e65100');return;}
+  atvEdit.push({texto:t,responsavel:resp||'',feito:false,em:new Date().toLocaleString('pt-BR')});
+  document.getElementById('pjAtvTexto').value='';renderAtv(atvEdit);
+  try{await persistAtv();showToast('✅ Atividade adicionada');}catch(e){showToast('❌ Erro ao salvar atividade','#c62828');}
+};
+window.toggleAtividade=async function(i){
+  if(!atvEdit[i])return;
+  atvEdit[i].feito=!atvEdit[i].feito;renderAtv(atvEdit);
+  try{await persistAtv();}catch(e){showToast('❌ Erro','#c62828');}
+};
+window.removeAtividade=async function(i){
+  atvEdit.splice(i,1);renderAtv(atvEdit);
+  try{await persistAtv();}catch(e){showToast('❌ Erro','#c62828');}
+};
+
 window.abrirProjeto=function(id){
   const tecs=tecnicosList();
   preencherTecSelect('pjTecnico', tecs, false);
   preencherTecSelect('pjObsAutor', tecs, false);
+  preencherTecSelect('pjAtvResp', tecs, false);
   if(id){
     const p=projetos.find(x=>x._id===id);if(!p)return;
     projAtual=id;
@@ -765,7 +869,7 @@ window.abrirProjeto=function(id){
     document.getElementById('pjInfo').value=p.info||'';
     document.getElementById('pjPrazo').value=p.prazo||'';
     document.getElementById('pjBtnExcluir').style.display='inline-block';
-    renderObs(p.observacoes||[]);
+    renderObs(p.observacoes||[]);atvEdit=(p.atividades||[]).slice();
   }else{
     projAtual=null;
     document.getElementById('mProjTitulo').textContent='🚀 Novo Projeto';
@@ -773,9 +877,10 @@ window.abrirProjeto=function(id){
     document.getElementById('pjStatus').value='Em andamento';
     document.getElementById('pjTecnico').value='';
     document.getElementById('pjBtnExcluir').style.display='none';
-    renderObs([]);
+    renderObs([]);atvEdit=[];
   }
   document.getElementById('pjObsTexto').value='';
+  document.getElementById('pjAtvTexto').value='';renderAtv(atvEdit);
   const la=localStorage.getItem('proj-autor');if(la)document.getElementById('pjObsAutor').value=la;
   document.getElementById('mProjBg').classList.add('open');
 };
