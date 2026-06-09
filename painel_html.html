@@ -205,6 +205,7 @@ body.dark .kpi.p{border-color:#9e57b3}
 <nav>
   <button class="nav-btn active" onclick="goPage('dashboard')">📊 Dashboard</button>
   <button class="nav-btn" onclick="goPage('lista')">📋 Chamados <span class="novo-badge" id="novoBadge"></span></button>
+  <button class="nav-btn" onclick="goPage('projetos')">🚀 Projetos</button>
   <button class="nav-btn" onclick="goPage('campos')">⚙️ Campos</button>
   <button class="nav-btn" onclick="goPage('relatorios')">📈 Relatórios</button>
   <button class="nav-btn" onclick="goPage('exportar')">📄 Exportar</button>
@@ -231,6 +232,53 @@ body.dark .kpi.p{border-color:#9e57b3}
     <div id="emptyMsg" style="display:none" class="empty">Nenhum chamado encontrado.</div>
   </div>
   <div class="pag" id="paginacao"></div>
+</div>
+
+<!-- PROJETOS -->
+<div id="page-projetos" class="page">
+  <div class="stats" id="projStats"></div>
+  <div class="toolbar">
+    <input type="text" id="projBusca" placeholder="🔍 Buscar projeto, técnico, IP..." oninput="renderProjetos()">
+    <select id="projFStatus" onchange="renderProjetos()">
+      <option value="">Todos os status</option>
+      <option>Planejado</option><option>Em andamento</option><option>Pausado</option><option>Concluído</option>
+    </select>
+    <select id="projFTec" onchange="renderProjetos()"><option value="">Todos os técnicos</option></select>
+    <button class="btn btn-blue" onclick="abrirProjeto()">➕ Novo Projeto</button>
+  </div>
+  <div class="campos-grid" id="projGrid"></div>
+  <div id="projEmpty" class="empty" style="display:none">Nenhum projeto ainda. Clique em "➕ Novo Projeto".</div>
+</div>
+
+<!-- MODAL PROJETO -->
+<div class="modal-bg" id="mProjBg">
+  <div class="modal">
+    <h3 id="mProjTitulo">🚀 Novo Projeto</h3>
+    <input type="hidden" id="pjId">
+    <div class="form-row"><label>Nome do projeto</label><input id="pjNome" placeholder="Ex.: Troca do switch core da matriz"></div>
+    <div class="form-row" style="display:flex;gap:8px">
+      <div style="flex:1"><label>Status</label>
+        <select id="pjStatus"><option>Planejado</option><option>Em andamento</option><option>Pausado</option><option>Concluído</option></select>
+      </div>
+      <div style="flex:1"><label>Técnico responsável</label><select id="pjTecnico"></select></div>
+    </div>
+    <div class="form-row"><label>IP / Link de acesso</label><input id="pjIp" placeholder="Ex.: 192.168.10.50  ou  http://painel.local"></div>
+    <div class="form-row"><label>Informações</label><textarea id="pjInfo" placeholder="Escopo, contexto, o que falta..."></textarea></div>
+    <div class="form-row">
+      <label>Observações</label>
+      <div id="pjObs" style="max-height:170px;overflow-y:auto;border:1px solid #eee;border-radius:6px;padding:7px;background:#fafbfc"></div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <select id="pjObsAutor" style="width:140px;padding:7px;border:1px solid #ccc;border-radius:6px;font-size:.8rem"></select>
+        <input id="pjObsTexto" placeholder="Nova observação..." style="flex:1;padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:.82rem" onkeydown="if(event.key==='Enter')addObservacao()">
+        <button class="btn btn-blue btn-sm" onclick="addObservacao()">Adicionar</button>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-red btn-sm" id="pjBtnExcluir" onclick="excluirProjeto()" style="margin-right:auto">🗑️ Excluir</button>
+      <button class="btn btn-gray" onclick="fecharProj()">Fechar</button>
+      <button class="btn btn-green" onclick="salvarProjeto()">💾 Salvar</button>
+    </div>
+  </div>
 </div>
 
 <!-- CAMPOS -->
@@ -419,6 +467,7 @@ const firebaseConfig = {
 // ============================================================
 
 let dados=[], pag=1, POR_PAG=15, modalDocId=null, db=null, chatUnsub=null;
+let projetos=[], projAtual=null;
 let campos = [
   {id:'nome',label:'Nome / Identificação',type:'select',required:true,locked:true,
    options:['ALEX CASTELO','AMANDA FAVACHO','AMANDA PIEDADE','ANA PAULA','ANDREIA DAMASCENO','BIANCA NORONHA','BRUNA COSTA','BRUNO CAVALCANTE','CAMILA DONATO','CARLOS COSTA','CLAUDETE CONCEIÇÃO','CLEIDE AMANAJÁS','DANIELLE ROSA','DAVID JESUS','DAYANE ALMEIDA','DÉBORA BORGES','EDILSON JUNIOR','EDSON DUARTE','FRANCY BRITO','GEORGINA ULIANA','GIOVANNI CUNHA','GIRLEIDE SILVA','GUSTAVO SUP.TECNICO','HUATILA RODRIGUES','ICARO SANTOS','INGREDY SILVA','ISAIAS MALCHER','IZABELA FERREIRA','JAMILY CRUZ','JOYSE SENA','JOZIANA ROSARIO','JULIANA AROUCA','KAREN RESENDE','KELLY PASSOS','LABELLE PEREIRA','LETICIA ESCAMILLA','LUCIENE RODRIGUES','MARCUS ARAUJO','MARCOS DA SILVA','MARCOS SENA','MARIANA FRAZÃO','NAIANE SODRE','NATAN RIBEIRO','ORLANDO LIMA','PAMELA MIRANDA','RAIMUNDA BARBÁRA','RAYLENE LOBATO','ROBERTO NASCIMENTO','SIMONE SANTOS','SOCORRO AFONSO','SUELLEN MAXIMIANO','TAINÁ CASTRO','TAYNARA ARCANJO','TIAGO NASCIMENTO','VALERIA SOUZA','WARLEN','MALU MATOS']},
@@ -511,6 +560,13 @@ try {
     totalAnterior=dados.length;primeiraVez=false;
     popularFiltroSetor();renderTabela();renderDash();
   });
+
+  // Listener tempo real dos projetos
+  onSnapshot(query(collection(db,'projetos'),orderBy('criadoEm','desc')), snap=>{
+    projetos=snap.docs.map(d=>({_id:d.id,...d.data()}));
+    if(document.getElementById('page-projetos').classList.contains('active')) renderProjetos();
+  }, err=>console.warn('projetos snapshot',err));
+
   if('Notification' in window&&Notification.permission==='default') Notification.requestPermission();
 } catch(e){
   document.getElementById('onlineDot').classList.add('off');
@@ -531,12 +587,148 @@ window.goPage=function(p){
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(e=>e.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
-  const idx={dashboard:0,lista:1,campos:2,relatorios:3,exportar:4};
+  const idx={dashboard:0,lista:1,projetos:2,campos:3,relatorios:4,exportar:5};
   if(idx[p]!==undefined) document.querySelectorAll('.nav-btn')[idx[p]].classList.add('active');
   if(p==='lista'){document.getElementById('novoBadge').style.display='none';renderTabela();}
   if(p==='dashboard') renderDash();
+  if(p==='projetos') renderProjetos();
   if(p==='campos') renderCampos();
   if(p==='relatorios') atualizarRelatorio();
+};
+
+// ============================ PROJETOS ============================
+const PROJ_STATUS=['Planejado','Em andamento','Pausado','Concluído'];
+function projStatusColor(s){return {'Planejado':'#7b1fa2','Em andamento':'#1565c0','Pausado':'#e65100','Concluído':'#2e7d32'}[s]||'#777';}
+function escP(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function ipHref(ip){ip=(ip||'').trim();if(!ip)return '';return /^https?:\/\//i.test(ip)?ip:('http://'+ip);}
+function tecnicosList(){const c=campos.find(c=>c.id==='sol');return (c&&Array.isArray(c.options))?c.options:[];}
+function preencherTecSelect(id,tecs,comTodos){
+  const s=document.getElementById(id);if(!s)return;const cur=s.value;
+  s.innerHTML=(comTodos?'<option value="">Todos os técnicos</option>':'<option value="">— sem responsável —</option>')+tecs.map(t=>`<option>${escP(t)}</option>`).join('');
+  if(cur)s.value=cur;
+}
+
+window.renderProjetos=function(){
+  preencherTecSelect('projFTec', tecnicosList(), true);
+  const b=(document.getElementById('projBusca').value||'').toLowerCase();
+  const fs=document.getElementById('projFStatus').value;
+  const ft=document.getElementById('projFTec').value;
+  const lista=projetos.filter(p=>{
+    const txt=[p.nome,p.info,p.tecnico,p.ip,(p.observacoes||[]).map(o=>o.texto).join(' ')].join(' ').toLowerCase();
+    return (!b||txt.includes(b))&&(!fs||p.status===fs)&&(!ft||p.tecnico===ft);
+  });
+  const cont=s=>projetos.filter(p=>p.status===s).length;
+  document.getElementById('projStats').innerHTML=`
+    <div class="sc"><div class="n">${projetos.length}</div><div class="l">Projetos</div></div>
+    <div class="sc o"><div class="n">${cont('Em andamento')}</div><div class="l">Em andamento</div></div>
+    <div class="sc y"><div class="n">${cont('Pausado')}</div><div class="l">Pausados</div></div>
+    <div class="sc g"><div class="n">${cont('Concluído')}</div><div class="l">Concluídos</div></div>`;
+  const g=document.getElementById('projGrid');g.innerHTML='';
+  document.getElementById('projEmpty').style.display=lista.length?'none':'block';
+  lista.forEach(p=>g.appendChild(cardProjeto(p)));
+};
+
+function cardProjeto(p){
+  const el=document.createElement('div');el.className='cc';
+  const cor=projStatusColor(p.status);el.style.borderTopColor=cor;
+  const obs=(p.observacoes||[]).length;const ip=ipHref(p.ip);
+  el.innerHTML=`
+    <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:3px">
+      <h3 style="flex:1">${escP(p.nome||'(sem nome)')}</h3>
+      <span class="badge" style="background:${cor}22;color:${cor}">${escP(p.status||'—')}</span>
+    </div>
+    <div class="sub">👤 ${escP(p.tecnico||'sem responsável')}</div>
+    ${ip?`<div style="font-size:.74rem;margin-bottom:6px">🔗 <a href="${escP(ip)}" target="_blank" rel="noopener" style="color:var(--azul);font-weight:600">${escP(p.ip)}</a></div>`:''}
+    ${p.info?`<div style="font-size:.78rem;color:#555;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${escP(p.info)}</div>`:''}
+    <div class="cc-actions">
+      <span style="font-size:.72rem;color:#888;flex:1">📝 ${obs} observação(ões)</span>
+      <button class="btn btn-blue btn-sm" data-id="${p._id}">Abrir</button>
+    </div>`;
+  el.querySelector('button').onclick=()=>abrirProjeto(p._id);
+  return el;
+}
+
+function renderObs(arr){
+  const box=document.getElementById('pjObs');
+  if(!arr||!arr.length){box.innerHTML='<p style="font-size:.74rem;color:#aaa;margin:2px">Sem observações ainda.</p>';return;}
+  box.innerHTML=arr.slice().reverse().map(o=>`
+    <div style="border-left:3px solid var(--azul);padding:4px 8px;margin-bottom:5px;background:#fff;border-radius:4px">
+      <div style="font-size:.78rem;color:#333;white-space:pre-wrap">${escP(o.texto)}</div>
+      <div style="font-size:.67rem;color:#999;margin-top:2px">${escP(o.autor||'—')} · ${escP(o.em||'')}</div>
+    </div>`).join('');
+}
+
+window.abrirProjeto=function(id){
+  const tecs=tecnicosList();
+  preencherTecSelect('pjTecnico', tecs, false);
+  preencherTecSelect('pjObsAutor', tecs, false);
+  if(id){
+    const p=projetos.find(x=>x._id===id);if(!p)return;
+    projAtual=id;
+    document.getElementById('mProjTitulo').textContent='🚀 Editar Projeto';
+    document.getElementById('pjId').value=id;
+    document.getElementById('pjNome').value=p.nome||'';
+    document.getElementById('pjStatus').value=p.status||'Planejado';
+    document.getElementById('pjTecnico').value=p.tecnico||'';
+    document.getElementById('pjIp').value=p.ip||'';
+    document.getElementById('pjInfo').value=p.info||'';
+    document.getElementById('pjBtnExcluir').style.display='inline-block';
+    renderObs(p.observacoes||[]);
+  }else{
+    projAtual=null;
+    document.getElementById('mProjTitulo').textContent='🚀 Novo Projeto';
+    ['pjId','pjNome','pjIp','pjInfo'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('pjStatus').value='Em andamento';
+    document.getElementById('pjTecnico').value='';
+    document.getElementById('pjBtnExcluir').style.display='none';
+    renderObs([]);
+  }
+  document.getElementById('pjObsTexto').value='';
+  const la=localStorage.getItem('proj-autor');if(la)document.getElementById('pjObsAutor').value=la;
+  document.getElementById('mProjBg').classList.add('open');
+};
+window.fecharProj=function(){document.getElementById('mProjBg').classList.remove('open');projAtual=null;};
+
+window.salvarProjeto=async function(){
+  if(!db){showToast('❌ Firebase não conectado','#c62828');return;}
+  const nome=document.getElementById('pjNome').value.trim();
+  if(!nome){showToast('⚠️ Informe o nome do projeto','#e65100');return;}
+  const data={
+    nome,
+    status:document.getElementById('pjStatus').value,
+    tecnico:document.getElementById('pjTecnico').value,
+    ip:document.getElementById('pjIp').value.trim(),
+    info:document.getElementById('pjInfo').value.trim(),
+    atualizadoEm:serverTimestamp()
+  };
+  try{
+    const id=document.getElementById('pjId').value;
+    if(id){await updateDoc(doc(db,'projetos',id),data);}
+    else{data.observacoes=[];data.criadoEm=serverTimestamp();await addDoc(collection(db,'projetos'),data);}
+    showToast('💾 Projeto salvo!');fecharProj();
+  }catch(e){showToast('❌ Erro ao salvar projeto','#c62828');console.error(e);}
+};
+
+window.addObservacao=async function(){
+  const txt=document.getElementById('pjObsTexto').value.trim();
+  const autor=document.getElementById('pjObsAutor').value;
+  if(!txt)return;
+  if(!projAtual){showToast('💾 Salve o projeto antes de observar','#e65100');return;}
+  localStorage.setItem('proj-autor',autor||'');
+  const p=projetos.find(x=>x._id===projAtual);
+  const obs=((p&&p.observacoes)||[]).slice();
+  obs.push({texto:txt,autor:autor||'',em:new Date().toLocaleString('pt-BR')});
+  try{
+    await updateDoc(doc(db,'projetos',projAtual),{observacoes:obs,atualizadoEm:serverTimestamp()});
+    document.getElementById('pjObsTexto').value='';renderObs(obs);showToast('📝 Observação adicionada');
+  }catch(e){showToast('❌ Erro ao adicionar observação','#c62828');}
+};
+
+window.excluirProjeto=async function(){
+  const id=document.getElementById('pjId').value;if(!id)return;
+  if(!confirm('Excluir este projeto? Esta ação não pode ser desfeita.'))return;
+  try{await deleteDoc(doc(db,'projetos',id));showToast('🗑️ Projeto excluído');fecharProj();}
+  catch(e){showToast('❌ Erro ao excluir','#c62828');}
 };
 
 // FILTROS
