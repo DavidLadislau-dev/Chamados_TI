@@ -250,6 +250,14 @@ body.dark .kpi.p{border-color:#9e57b3}
       <button id="vwCal" class="btn btn-gray btn-sm" onclick="projView('cal')">📅 Calendário</button>
     </span>
   </div>
+  <div id="reposSection" style="display:none">
+    <div style="display:flex;align-items:center;gap:8px;margin:2px 0 8px;flex-wrap:wrap">
+      <span style="font-size:.86rem;font-weight:700;color:var(--azul)">🔧 Repositórios (Git)</span>
+      <span style="font-size:.7rem;color:#999">sincronizado automaticamente · onde parei em cada sistema</span>
+    </div>
+    <div class="campos-grid" id="reposGrid"></div>
+    <div style="font-size:.86rem;font-weight:700;color:var(--azul);margin:16px 0 8px">📋 Projetos</div>
+  </div>
   <div class="campos-grid" id="projGrid"></div>
   <div id="projCal" style="display:none;background:#fff;border-radius:10px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);max-width:1100px"></div>
   <div id="projEmpty" class="empty" style="display:none">Nenhum projeto ainda. Clique em "➕ Novo Projeto".</div>
@@ -474,7 +482,7 @@ const firebaseConfig = {
 // ============================================================
 
 let dados=[], pag=1, POR_PAG=15, modalDocId=null, db=null, chatUnsub=null;
-let projetos=[], projAtual=null;
+let projetos=[], projAtual=null, reposGit=[];
 let campos = [
   {id:'nome',label:'Nome / Identificação',type:'select',required:true,locked:true,
    options:['ALEX CASTELO','AMANDA FAVACHO','AMANDA PIEDADE','ANA PAULA','ANDREIA DAMASCENO','BIANCA NORONHA','BRUNA COSTA','BRUNO CAVALCANTE','CAMILA DONATO','CARLOS COSTA','CLAUDETE CONCEIÇÃO','CLEIDE AMANAJÁS','DANIELLE ROSA','DAVID JESUS','DAYANE ALMEIDA','DÉBORA BORGES','EDILSON JUNIOR','EDSON DUARTE','FRANCY BRITO','GEORGINA ULIANA','GIOVANNI CUNHA','GIRLEIDE SILVA','GUSTAVO SUP.TECNICO','HUATILA RODRIGUES','ICARO SANTOS','INGREDY SILVA','ISAIAS MALCHER','IZABELA FERREIRA','JAMILY CRUZ','JOYSE SENA','JOZIANA ROSARIO','JULIANA AROUCA','KAREN RESENDE','KELLY PASSOS','LABELLE PEREIRA','LETICIA ESCAMILLA','LUCIENE RODRIGUES','MARCUS ARAUJO','MARCOS DA SILVA','MARCOS SENA','MARIANA FRAZÃO','NAIANE SODRE','NATAN RIBEIRO','ORLANDO LIMA','PAMELA MIRANDA','RAIMUNDA BARBÁRA','RAYLENE LOBATO','ROBERTO NASCIMENTO','SIMONE SANTOS','SOCORRO AFONSO','SUELLEN MAXIMIANO','TAINÁ CASTRO','TAYNARA ARCANJO','TIAGO NASCIMENTO','VALERIA SOUZA','WARLEN','MALU MATOS']},
@@ -574,6 +582,12 @@ try {
     if(document.getElementById('page-projetos').classList.contains('active')) renderProjetos();
   }, err=>console.warn('projetos snapshot',err));
 
+  // Listener tempo real dos repositórios (sincronizados pelo gerenciador local)
+  onSnapshot(collection(db,'repos'), snap=>{
+    reposGit=snap.docs.map(d=>({_id:d.id,...d.data()}));
+    if(document.getElementById('page-projetos').classList.contains('active')) renderRepos();
+  }, err=>console.warn('repos snapshot',err));
+
   if('Notification' in window&&Notification.permission==='default') Notification.requestPermission();
 } catch(e){
   document.getElementById('onlineDot').classList.add('off');
@@ -635,6 +649,7 @@ window.renderProjetos=function(){
   const g=document.getElementById('projGrid');g.innerHTML='';
   document.getElementById('projEmpty').style.display=(lista.length||projViewMode==='cal')?'none':'block';
   lista.forEach(p=>g.appendChild(cardProjeto(p)));
+  renderRepos();
   if(projViewMode==='cal'&&projCal) projCal.refetchEvents();
 };
 
@@ -687,6 +702,40 @@ function cardProjeto(p){
       <button class="btn btn-blue btn-sm" data-id="${p._id}">Abrir</button>
     </div>`;
   el.querySelector('button').onclick=()=>abrirProjeto(p._id);
+  return el;
+}
+
+// REPOSITÓRIOS (somente leitura — fonte é o gerenciador local via git)
+window.renderRepos=function(){
+  const sec=document.getElementById('reposSection');
+  const show=(projViewMode==='cards')&&reposGit.length>0;
+  sec.style.display=show?'block':'none';
+  if(!show)return;
+  const g=document.getElementById('reposGrid');g.innerHTML='';
+  reposGit.slice().sort((a,b)=>(Number(b.diasParado??-1))-(Number(a.diasParado??-1)))
+    .forEach(r=>g.appendChild(cardRepo(r)));
+};
+function cardRepo(r){
+  const el=document.createElement('div');el.className='cc';
+  const dias=(r.diasParado==null)?null:Number(r.diasParado);
+  const cor=dias==null?'#94a3b8':(dias<14?'#2e7d32':(dias<45?'#e65100':'#c62828'));
+  el.style.borderTopColor=cor;
+  const sujo=Number(r.sujo||0),ahead=Number(r.ahead||0);
+  const diasTxt=dias==null?'sem commits':(dias===0?'hoje':(dias+'d parado'));
+  const badges=[];
+  if(r.branch)badges.push(`<span class="badge" style="background:#e8eef5;color:#1a3a5c">⎇ ${escP(r.branch)}</span>`);
+  badges.push(`<span class="badge" style="background:${cor}22;color:${cor}">⏱ ${diasTxt}</span>`);
+  if(sujo>0)badges.push(`<span class="badge" style="background:#fff3e0;color:#e65100">✎ ${sujo} não commitado(s)</span>`);
+  if(ahead>0)badges.push(`<span class="badge" style="background:#fff3e0;color:#e65100">↑ ${ahead} sem push</span>`);
+  let dt='';try{if(r.commitData)dt=' · '+new Date(r.commitData).toLocaleDateString('pt-BR');}catch(e){}
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+      <h3 style="flex:1">${escP(r.nome)}</h3>
+      ${r.repoUrl?`<a href="${escP(r.repoUrl)}" target="_blank" rel="noopener" style="font-size:.72rem;color:var(--azul);font-weight:700">abrir ↗</a>`:''}
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">${badges.join('')}</div>
+    <div style="font-size:.74rem;color:#666;margin-bottom:4px">último: <b>${escP(r.commitMsg||'—')}</b>${dt}</div>
+    ${r.proximoPasso?`<div style="font-size:.74rem;background:#fffbe6;border:1px dashed #f9a825;border-radius:6px;padding:5px 8px;color:#8a6d00">▶ ${escP(r.proximoPasso)}</div>`:''}`;
   return el;
 }
 
