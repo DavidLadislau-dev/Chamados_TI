@@ -63,6 +63,8 @@ tr:hover td{background:#f5f8fb}
 .modal-field{margin-bottom:10px;font-size:.83rem}
 .modal-field b{color:#444;display:block;font-size:.75rem;margin-bottom:2px}
 .modal-field p{color:#222;line-height:1.5;word-break:break-word}
+.atv-txt{color:#333}
+.obs-card{background:#fff}
 .modal-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:16px}
 .form-row{margin-bottom:12px}
 .form-row label{display:block;font-size:.79rem;font-weight:700;color:#555;margin-bottom:4px}
@@ -181,6 +183,8 @@ body.dark .modal{background:#1a2535;color:#d8dde3}
 body.dark .modal h3{color:#5b9bd5}
 body.dark .modal-field b{color:#a8b3c2}
 body.dark .modal-field p{color:#d8dde3}
+body.dark .atv-txt{color:#d8dde3}
+body.dark .obs-card{background:#22344a}
 body.dark .form-row label{color:#a8b3c2}
 body.dark .btn-gray{background:#2a3a52;color:#d8dde3}
 body.dark .btn-gray:hover{background:#34465f}
@@ -763,8 +767,8 @@ function renderObs(arr){
   const box=document.getElementById('pjObs');
   if(!arr||!arr.length){box.innerHTML='<p style="font-size:.74rem;color:#aaa;margin:2px">Sem observações ainda.</p>';return;}
   box.innerHTML=arr.slice().reverse().map(o=>`
-    <div style="border-left:3px solid var(--azul);padding:4px 8px;margin-bottom:5px;background:#fff;border-radius:4px">
-      <div style="font-size:.78rem;color:#333;white-space:pre-wrap">${escP(o.texto)}</div>
+    <div class="obs-card" style="border-left:3px solid var(--azul);padding:4px 8px;margin-bottom:5px;border-radius:4px">
+      <div class="atv-txt" style="font-size:.78rem;white-space:pre-wrap">${escP(o.texto)}</div>
       <div style="font-size:.67rem;color:#999;margin-top:2px">${escP(o.autor||'—')} · ${escP(o.em||'')}</div>
     </div>`).join('');
 }
@@ -776,7 +780,7 @@ function renderAtv(arr){
   box.innerHTML=arr.map((a,i)=>`
     <div style="display:flex;align-items:center;gap:7px;padding:3px 2px">
       <span onclick="toggleAtividade(${i})" title="marcar" style="cursor:pointer;width:18px;height:18px;border:2px solid ${a.feito?'#2e7d32':'#bbb'};background:${a.feito?'#2e7d32':'#fff'};color:#fff;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex:none">${a.feito?'✓':''}</span>
-      <span style="flex:1;font-size:.8rem;${a.feito?'text-decoration:line-through;color:#999':'color:#333'}">${escP(a.texto)}${a.responsavel?` <span style="font-size:.68rem;color:#1565c0">· ${escP(a.responsavel)}</span>`:''}</span>
+      <span class="atv-txt" style="flex:1;font-size:.8rem;${a.feito?'text-decoration:line-through;opacity:.55':''}">${escP(a.texto)}${a.responsavel?` <span style="font-size:.68rem;color:#1565c0">· ${escP(a.responsavel)}</span>`:''}</span>
       <span onclick="removeAtividade(${i})" title="remover" style="cursor:pointer;color:#c62828;font-weight:900;font-size:.9rem;padding:0 3px">×</span>
     </div>`).join('');
 }
