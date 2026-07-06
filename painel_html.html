@@ -209,6 +209,22 @@ body.dark [style*="color:var(--verde)"]{color:#7dcb82 !important}
 body.dark [style*="color:var(--laranja)"]{color:#ffa863 !important}
 body.dark .kpi.p .kn{color:#c98ad8}
 body.dark .kpi.p{border-color:#9e57b3}
+/* ATIVIDADES */
+.list-box{max-height:170px;overflow-y:auto;border:1px solid #e3e8ee;border-radius:6px;padding:7px;background:#fafbfc}
+.list-box .empty-mini{font-size:.74rem;color:#9aa5b1;margin:2px}
+.mini-input{padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:.82rem;font-family:inherit}
+.chk{width:18px;height:18px;border:2px solid #bbb;background:transparent;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex:none;cursor:pointer;color:#fff}
+.chk.on{background:#2e7d32;border-color:#2e7d32}
+.prio-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+body.dark .list-box{background:#0f1721;border-color:#2a3a52}
+body.dark .list-box .empty-mini{color:#6b7a8e}
+body.dark .mini-input{background:#0f1721;color:#d8dde3;border-color:#2a3a52}
+body.dark .chk{border-color:#5b7089}
+body.dark input::placeholder,body.dark textarea::placeholder{color:#8a99ad}
+body.dark [style*="color:#7b1fa2"]{color:#c98ad8 !important}
+body.dark [style*="color:#1565c0"]{color:#5b9bd5 !important}
+body.dark [style*="color:#e65100"]{color:#ffa863 !important}
+body.dark [style*="color:#2e7d32"]{color:#7dcb82 !important}
 </style>
 </head>
 <body>
@@ -221,7 +237,7 @@ body.dark .kpi.p{border-color:#9e57b3}
 <nav>
   <button class="nav-btn active" onclick="goPage('dashboard')">📊 Dashboard</button>
   <button class="nav-btn" onclick="goPage('lista')">📋 Chamados <span class="novo-badge" id="novoBadge"></span></button>
-  <button class="nav-btn" onclick="goPage('projetos')">🚀 Projetos</button>
+  <button class="nav-btn" onclick="goPage('atividades')">✅ Atividades</button>
   <button class="nav-btn" onclick="goPage('campos')">⚙️ Campos</button>
   <button class="nav-btn" onclick="goPage('relatorios')">📈 Relatórios</button>
   <button class="nav-btn" onclick="goPage('exportar')">📄 Exportar</button>
@@ -250,17 +266,21 @@ body.dark .kpi.p{border-color:#9e57b3}
   <div class="pag" id="paginacao"></div>
 </div>
 
-<!-- PROJETOS -->
-<div id="page-projetos" class="page">
+<!-- ATIVIDADES -->
+<div id="page-atividades" class="page">
   <div class="stats" id="projStats"></div>
   <div class="toolbar">
-    <input type="text" id="projBusca" placeholder="🔍 Buscar projeto, técnico, IP..." oninput="renderProjetos()">
-    <select id="projFStatus" onchange="renderProjetos()">
+    <input type="text" id="projBusca" placeholder="🔍 Buscar atividade, responsável..." oninput="renderAtividades()">
+    <select id="projFStatus" onchange="renderAtividades()">
       <option value="">Todos os status</option>
       <option>Planejado</option><option>Em andamento</option><option>Pausado</option><option>Concluído</option>
     </select>
-    <select id="projFTec" onchange="renderProjetos()"><option value="">Todos os técnicos</option></select>
-    <button class="btn btn-blue" onclick="abrirProjeto()">➕ Novo Projeto</button>
+    <select id="projFTec" onchange="renderAtividades()"><option value="">Todos os responsáveis</option></select>
+    <select id="projFPrio" onchange="renderAtividades()">
+      <option value="">Todas prioridades</option><option>Alta</option><option>Média</option><option>Baixa</option>
+    </select>
+    <button class="btn btn-blue" onclick="abrirAtividade()">➕ Nova Atividade</button>
+    <button id="btnMigrar" class="btn btn-gray btn-sm" onclick="migrarProjetos()" style="display:none"></button>
     <span style="margin-left:auto;display:inline-flex;gap:4px">
       <button id="vwCards" class="btn btn-blue btn-sm" onclick="projView('cards')">🗂️ Cards</button>
       <button id="vwKanban" class="btn btn-gray btn-sm" onclick="projView('kanban')">📌 Kanban</button>
@@ -270,46 +290,49 @@ body.dark .kpi.p{border-color:#9e57b3}
   <div class="campos-grid" id="projGrid"></div>
   <div id="projCal" style="display:none;background:#fff;border-radius:10px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);max-width:1100px"></div>
   <div id="projKanban" style="display:none"></div>
-  <div id="projEmpty" class="empty" style="display:none">Nenhum projeto ainda. Clique em "➕ Novo Projeto".</div>
+  <div id="projEmpty" class="empty" style="display:none">Nenhuma atividade ainda. Clique em "➕ Nova Atividade".</div>
 </div>
 
-<!-- MODAL PROJETO -->
+<!-- MODAL ATIVIDADE -->
 <div class="modal-bg" id="mProjBg">
   <div class="modal">
-    <h3 id="mProjTitulo">🚀 Novo Projeto</h3>
+    <h3 id="mProjTitulo">✅ Nova Atividade</h3>
     <input type="hidden" id="pjId">
-    <div class="form-row"><label>Nome do projeto</label><input id="pjNome" placeholder="Ex.: Troca do switch core da matriz"></div>
+    <div class="form-row"><label>Título da atividade</label><input id="pjNome" placeholder="Ex.: Trocar o switch core da matriz"></div>
     <div class="form-row" style="display:flex;gap:8px">
       <div style="flex:1"><label>Status</label>
         <select id="pjStatus"><option>Planejado</option><option>Em andamento</option><option>Pausado</option><option>Concluído</option></select>
       </div>
       <div style="flex:1"><label>Prazo</label><input type="date" id="pjPrazo"></div>
     </div>
-    <div class="form-row"><label>Técnico responsável</label><select id="pjTecnico"></select></div>
-    <div class="form-row"><label>IP / Link de acesso</label><input id="pjIp" placeholder="Ex.: 192.168.10.50  ou  http://painel.local"></div>
-    <div class="form-row"><label>Informações</label><textarea id="pjInfo" placeholder="Escopo, contexto, o que falta..."></textarea></div>
+    <div class="form-row" style="display:flex;gap:8px">
+      <div style="flex:1"><label>Responsável</label><select id="pjTecnico"></select></div>
+      <div style="flex:1"><label>Prioridade</label>
+        <select id="pjPrio"><option>Baixa</option><option selected>Média</option><option>Alta</option></select>
+      </div>
+    </div>
+    <div class="form-row"><label>Descrição</label><textarea id="pjInfo" placeholder="Escopo, contexto, o que falta..."></textarea></div>
     <div class="form-row">
-      <label>Atividades</label>
-      <div id="pjAtv" style="max-height:170px;overflow-y:auto;border:1px solid #eee;border-radius:6px;padding:7px;background:#fafbfc"></div>
+      <label>Subtarefas</label>
+      <div id="pjAtv" class="list-box"></div>
       <div style="display:flex;gap:6px;margin-top:6px">
-        <input id="pjAtvTexto" placeholder="Nova atividade..." style="flex:1;padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:.82rem" onkeydown="if(event.key==='Enter')addAtividade()">
-        <select id="pjAtvResp" style="width:140px;padding:7px;border:1px solid #ccc;border-radius:6px;font-size:.8rem"></select>
-        <button class="btn btn-blue btn-sm" onclick="addAtividade()">Adicionar</button>
+        <input id="pjAtvTexto" class="mini-input" placeholder="Nova subtarefa..." style="flex:1" onkeydown="if(event.key==='Enter')addSubtarefa()">
+        <button class="btn btn-blue btn-sm" onclick="addSubtarefa()">Adicionar</button>
       </div>
     </div>
     <div class="form-row">
       <label>Observações</label>
-      <div id="pjObs" style="max-height:170px;overflow-y:auto;border:1px solid #eee;border-radius:6px;padding:7px;background:#fafbfc"></div>
+      <div id="pjObs" class="list-box"></div>
       <div style="display:flex;gap:6px;margin-top:6px">
-        <select id="pjObsAutor" style="width:140px;padding:7px;border:1px solid #ccc;border-radius:6px;font-size:.8rem"></select>
-        <input id="pjObsTexto" placeholder="Nova observação..." style="flex:1;padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:.82rem" onkeydown="if(event.key==='Enter')addObservacao()">
+        <select id="pjObsAutor" class="mini-input" style="width:140px"></select>
+        <input id="pjObsTexto" class="mini-input" placeholder="Nova observação..." style="flex:1" onkeydown="if(event.key==='Enter')addObservacao()">
         <button class="btn btn-blue btn-sm" onclick="addObservacao()">Adicionar</button>
       </div>
     </div>
     <div class="modal-btns">
-      <button class="btn btn-red btn-sm" id="pjBtnExcluir" onclick="excluirProjeto()" style="margin-right:auto">🗑️ Excluir</button>
+      <button class="btn btn-red btn-sm" id="pjBtnExcluir" onclick="excluirAtividade()" style="margin-right:auto">🗑️ Excluir</button>
       <button class="btn btn-gray" onclick="fecharProj()">Fechar</button>
-      <button class="btn btn-green" onclick="salvarProjeto()">💾 Salvar</button>
+      <button class="btn btn-green" onclick="salvarAtividade()">💾 Salvar</button>
     </div>
   </div>
 </div>
@@ -501,7 +524,7 @@ const firebaseConfig = {
 // ============================================================
 
 let dados=[], pag=1, POR_PAG=15, modalDocId=null, db=null, chatUnsub=null;
-let projetos=[], projAtual=null;
+let atividades=[], projAtual=null, projetosLegado=[];
 let campos = [
   {id:'nome',label:'Nome / Identificação',type:'select',required:true,locked:true,
    options:['ALEX CASTELO','AMANDA FAVACHO','AMANDA PIEDADE','ANA PAULA','ANDREIA DAMASCENO','BIANCA NORONHA','BRUNA COSTA','BRUNO CAVALCANTE','CAMILA DONATO','CARLOS COSTA','CLAUDETE CONCEIÇÃO','CLEIDE AMANAJÁS','DANIELLE ROSA','DAVID JESUS','DAYANE ALMEIDA','DÉBORA BORGES','EDILSON JUNIOR','EDSON DUARTE','FRANCY BRITO','GEORGINA ULIANA','GIOVANNI CUNHA','GIRLEIDE SILVA','GUSTAVO SUP.TECNICO','HUATILA RODRIGUES','ICARO SANTOS','INGREDY SILVA','ISAIAS MALCHER','IZABELA FERREIRA','JAMILY CRUZ','JOYSE SENA','JOZIANA ROSARIO','JULIANA AROUCA','KAREN RESENDE','KELLY PASSOS','LABELLE PEREIRA','LETICIA ESCAMILLA','LUCIENE RODRIGUES','MARCUS ARAUJO','MARCOS DA SILVA','MARCOS SENA','MARIANA FRAZÃO','NAIANE SODRE','NATAN RIBEIRO','ORLANDO LIMA','PAMELA MIRANDA','RAIMUNDA BARBÁRA','RAYLENE LOBATO','ROBERTO NASCIMENTO','SIMONE SANTOS','SOCORRO AFONSO','SUELLEN MAXIMIANO','TAINÁ CASTRO','TAYNARA ARCANJO','TIAGO NASCIMENTO','VALERIA SOUZA','WARLEN','MALU MATOS']},
@@ -595,11 +618,16 @@ try {
     popularFiltroSetor();renderTabela();renderDash();
   });
 
-  // Listener tempo real dos projetos
-  onSnapshot(query(collection(db,'projetos'),orderBy('criadoEm','desc')), snap=>{
-    projetos=snap.docs.map(d=>({_id:d.id,...d.data()}));
-    if(document.getElementById('page-projetos').classList.contains('active')) renderProjetos();
-  }, err=>console.warn('projetos snapshot',err));
+  // Listener tempo real das atividades
+  onSnapshot(query(collection(db,'atividades'),orderBy('criadoEm','desc')), snap=>{
+    atividades=snap.docs.map(d=>({_id:d.id,...d.data()}));
+    if(document.getElementById('page-atividades').classList.contains('active')) renderAtividades();
+  }, err=>console.warn('atividades snapshot',err));
+  // Projetos legados — só para oferecer a migração 1x (coleção preservada como backup)
+  onSnapshot(collection(db,'projetos'), snap=>{
+    projetosLegado=snap.docs.map(d=>({_id:d.id,...d.data()}));
+    atualizarBotaoMigrar();
+  }, err=>console.warn('projetos legado snapshot',err));
 
   if('Notification' in window&&Notification.permission==='default') Notification.requestPermission();
 } catch(e){
@@ -621,19 +649,20 @@ window.goPage=function(p){
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(e=>e.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
-  const idx={dashboard:0,lista:1,projetos:2,campos:3,relatorios:4,exportar:5};
+  const idx={dashboard:0,lista:1,atividades:2,campos:3,relatorios:4,exportar:5};
   if(idx[p]!==undefined) document.querySelectorAll('.nav-btn')[idx[p]].classList.add('active');
   if(p==='lista'){document.getElementById('novoBadge').style.display='none';renderTabela();}
   if(p==='dashboard') renderDash();
-  if(p==='projetos') renderProjetos();
+  if(p==='atividades') renderAtividades();
   if(p==='campos') renderCampos();
   if(p==='relatorios') atualizarRelatorio();
 };
 
-// ============================ PROJETOS ============================
+// ============================ ATIVIDADES ============================
 const PROJ_STATUS=['Planejado','Em andamento','Pausado','Concluído'];
-let projCal=null, projViewMode='cards', atvEdit=[];
+let projCal=null, projViewMode='cards', subEdit=[];
 function projStatusColor(s){return {'Planejado':'#7b1fa2','Em andamento':'#1565c0','Pausado':'#e65100','Concluído':'#2e7d32'}[s]||'#777';}
+function prioColor(p){return {'Alta':'#e53935','Média':'#f9a825','Baixa':'#7cb342'}[p]||'#f9a825';}
 function fmtPrazo(s){if(!s)return'';const p=String(s).split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:s;}
 function escP(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function ipHref(ip){ip=(ip||'').trim();if(!ip)return '';return /^https?:\/\//i.test(ip)?ip:('http://'+ip);}
@@ -644,29 +673,38 @@ function preencherTecSelect(id,tecs,comTodos){
   if(cur)s.value=cur;
 }
 
-window.renderProjetos=function(){
-  preencherTecSelect('projFTec', tecnicosList(), true);
+function textoBusca(a){return [a.titulo,a.info,a.responsavel,(a.observacoes||[]).map(o=>o.texto).join(' ')].join(' ').toLowerCase();}
+function filtrarAtividades(incluirStatus){
   const b=(document.getElementById('projBusca').value||'').toLowerCase();
   const fs=document.getElementById('projFStatus').value;
   const ft=document.getElementById('projFTec').value;
-  const lista=projetos.filter(p=>{
-    const txt=[p.nome,p.info,p.tecnico,p.ip,(p.observacoes||[]).map(o=>o.texto).join(' ')].join(' ').toLowerCase();
-    return (!b||txt.includes(b))&&(!fs||p.status===fs)&&(!ft||p.tecnico===ft);
+  const fp=document.getElementById('projFPrio').value;
+  return atividades.filter(a=>{
+    if(b && !textoBusca(a).includes(b)) return false;
+    if(incluirStatus && fs && a.status!==fs) return false;
+    if(ft && a.responsavel!==ft) return false;
+    if(fp && (a.prioridade||'Média')!==fp) return false;
+    return true;
   });
-  const cont=s=>projetos.filter(p=>p.status===s).length;
+}
+window.renderAtividades=function(){
+  preencherTecSelect('projFTec', tecnicosList(), true);
+  const lista=filtrarAtividades(true);
+  const cont=s=>atividades.filter(a=>a.status===s).length;
   document.getElementById('projStats').innerHTML=`
-    <div class="sc"><div class="n">${projetos.length}</div><div class="l">Projetos</div></div>
+    <div class="sc"><div class="n">${atividades.length}</div><div class="l">Atividades</div></div>
     <div class="sc o"><div class="n">${cont('Em andamento')}</div><div class="l">Em andamento</div></div>
-    <div class="sc y"><div class="n">${cont('Pausado')}</div><div class="l">Pausados</div></div>
-    <div class="sc g"><div class="n">${cont('Concluído')}</div><div class="l">Concluídos</div></div>`;
+    <div class="sc y"><div class="n">${cont('Pausado')}</div><div class="l">Pausadas</div></div>
+    <div class="sc g"><div class="n">${cont('Concluído')}</div><div class="l">Concluídas</div></div>`;
   const g=document.getElementById('projGrid');g.innerHTML='';
   document.getElementById('projEmpty').style.display=(projViewMode==='cards'&&!lista.length)?'block':'none';
-  lista.forEach(p=>g.appendChild(cardProjeto(p)));
+  lista.forEach(a=>g.appendChild(cardAtividade(a)));
   if(projViewMode==='cal'&&projCal) projCal.refetchEvents();
   if(projViewMode==='kanban') renderKanban();
+  atualizarBotaoMigrar();
 };
 
-// CALENDARIO DE PROJETOS
+// CALENDARIO DE ATIVIDADES
 window.projView=function(v){
   projViewMode=v;
   document.getElementById('projGrid').style.display=(v==='cards')?'grid':'none';
@@ -675,7 +713,7 @@ window.projView=function(v){
   const setBtn=(id,on)=>document.getElementById(id).className='btn btn-sm '+(on?'btn-blue':'btn-gray');
   setBtn('vwCards',v==='cards');setBtn('vwKanban',v==='kanban');setBtn('vwCal',v==='cal');
   if(v==='cal'){ initProjCal(); if(projCal){projCal.updateSize();projCal.refetchEvents();} }
-  renderProjetos();
+  renderAtividades();
 };
 function initProjCal(){
   if(projCal||typeof FullCalendar==='undefined')return;
@@ -683,15 +721,15 @@ function initProjCal(){
     locale:'pt-br', initialView:'dayGridMonth', height:'auto', firstDay:0,
     headerToolbar:{left:'prev,next today',center:'title',right:'dayGridMonth,listMonth'},
     editable:true,
-    events:(info,ok)=>ok(projetos.filter(p=>p.prazo).map(p=>({
-      id:p._id, title:p.nome, start:p.prazo,
-      backgroundColor:projStatusColor(p.status), borderColor:projStatusColor(p.status), textColor:'#fff'
+    events:(info,ok)=>ok(filtrarAtividades(true).filter(a=>a.prazo).map(a=>({
+      id:a._id, title:a.titulo, start:a.prazo,
+      backgroundColor:projStatusColor(a.status), borderColor:projStatusColor(a.status), textColor:'#fff'
     }))),
-    eventClick:i=>abrirProjeto(i.event.id),
-    dateClick:i=>{abrirProjeto();document.getElementById('pjPrazo').value=i.dateStr;},
+    eventClick:i=>abrirAtividade(i.event.id),
+    dateClick:i=>{abrirAtividade();document.getElementById('pjPrazo').value=i.dateStr;},
     eventDrop:async i=>{
       if(!db){i.revert();return;}
-      try{await updateDoc(doc(db,'projetos',i.event.id),{prazo:i.event.startStr.slice(0,10),atualizadoEm:serverTimestamp()});showToast('📅 Prazo remarcado');}
+      try{await updateDoc(doc(db,'atividades',i.event.id),{prazo:i.event.startStr.slice(0,10),atualizadoEm:serverTimestamp()});showToast('📅 Prazo remarcado');}
       catch(e){i.revert();showToast('❌ Erro ao remarcar','#c62828');}
     }
   });
@@ -701,34 +739,29 @@ function initProjCal(){
 // KANBAN — colunas por status, arrastar pra mover
 window.renderKanban=function(){
   const cont=document.getElementById('projKanban');
-  const b=(document.getElementById('projBusca').value||'').toLowerCase();
-  const ft=document.getElementById('projFTec').value;
-  const lista=projetos.filter(p=>{
-    const txt=[p.nome,p.info,p.tecnico,p.ip].join(' ').toLowerCase();
-    return (!b||txt.includes(b))&&(!ft||p.tecnico===ft);
-  });
+  const lista=filtrarAtividades(false);
   cont.innerHTML='<div class="kb-board">'+PROJ_STATUS.map(s=>{
     const cor=projStatusColor(s);
-    const itens=lista.filter(p=>(p.status||'Planejado')===s);
+    const itens=lista.filter(a=>(a.status||'Planejado')===s);
     return `<div class="kb-col" data-status="${escP(s)}"
         ondragover="event.preventDefault();this.classList.add('drag-over')"
         ondragleave="this.classList.remove('drag-over')"
         ondrop="kbDrop(event,this)">
       <h4 style="color:${cor}"><span style="width:9px;height:9px;border-radius:50%;background:${cor};display:inline-block"></span> ${escP(s)} <span style="color:#999;font-weight:600">${itens.length}</span></h4>
-      ${itens.map(p=>kbCard(p,cor)).join('')||'<div style="font-size:.7rem;color:#aaa;text-align:center;padding:8px">—</div>'}
+      ${itens.map(a=>kbCard(a,cor)).join('')||'<div style="font-size:.7rem;color:#aaa;text-align:center;padding:8px">—</div>'}
     </div>`;
   }).join('')+'</div>';
 };
-function kbCard(p,cor){
-  const atv=(p.atividades||[]);const af=atv.filter(a=>a.feito).length;
+function kbCard(a,cor){
+  const sub=(a.subtarefas||[]);const sf=sub.filter(x=>x.feito).length;
   return `<div class="kb-card" draggable="true" style="border-left-color:${cor}"
-      ondragstart="event.dataTransfer.setData('text/plain','${p._id}')"
-      onclick="abrirProjeto('${p._id}')">
-    <div class="t">${escP(p.nome||'(sem nome)')}</div>
+      ondragstart="event.dataTransfer.setData('text/plain','${a._id}')"
+      onclick="abrirAtividade('${a._id}')">
+    <div class="t">${escP(a.titulo||'(sem título)')}</div>
     <div class="m">
-      ${p.tecnico?`<span>👤 ${escP(p.tecnico)}</span>`:''}
-      ${p.prazo?`<span style="color:#e65100">📅 ${fmtPrazo(p.prazo)}</span>`:''}
-      ${atv.length?`<span>✅ ${af}/${atv.length}</span>`:''}
+      ${a.responsavel?`<span>👤 ${escP(a.responsavel)}</span>`:''}
+      ${a.prazo?`<span style="color:#e65100">📅 ${fmtPrazo(a.prazo)}</span>`:''}
+      ${sub.length?`<span>✅ ${sf}/${sub.length}</span>`:''}
     </div>
   </div>`;
 }
@@ -736,36 +769,48 @@ window.kbDrop=async function(ev,col){
   ev.preventDefault();col.classList.remove('drag-over');
   const id=ev.dataTransfer.getData('text/plain');const novo=col.getAttribute('data-status');
   if(!id||!novo||!db)return;
-  const p=projetos.find(x=>x._id===id);if(p&&p.status===novo)return;
-  try{await updateDoc(doc(db,'projetos',id),{status:novo,atualizadoEm:serverTimestamp()});showToast('📌 Movido para: '+novo);}
+  const a=atividades.find(x=>x._id===id);if(a&&a.status===novo)return;
+  try{await updateDoc(doc(db,'atividades',id),{status:novo,feito:novo==='Concluído',atualizadoEm:serverTimestamp()});showToast('📌 Movido para: '+novo);}
   catch(e){showToast('❌ Erro ao mover','#c62828');}
 };
 
-function cardProjeto(p){
+function cardAtividade(a){
   const el=document.createElement('div');el.className='cc';
-  const cor=projStatusColor(p.status);el.style.borderTopColor=cor;
-  const obs=(p.observacoes||[]).length;const ip=ipHref(p.ip);
-  const atv=(p.atividades||[]);const atvFeito=atv.filter(a=>a.feito).length;
+  const cor=projStatusColor(a.status);el.style.borderTopColor=cor;
+  const concl=a.status==='Concluído';
+  const obs=(a.observacoes||[]).length;
+  const sub=(a.subtarefas||[]);const subFeito=sub.filter(x=>x.feito).length;
+  const prio=a.prioridade||'Média';
   el.innerHTML=`
-    <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:3px">
-      <h3 style="flex:1">${escP(p.nome||'(sem nome)')}</h3>
-      <span class="badge" style="background:${cor}22;color:${cor}">${escP(p.status||'—')}</span>
+    <div style="display:flex;align-items:flex-start;gap:7px;margin-bottom:3px">
+      <span class="chk atv-card-check ${concl?'on':''}" title="Concluir">${concl?'✓':''}</span>
+      <h3 style="flex:1;${concl?'text-decoration:line-through;opacity:.6':''}">${escP(a.titulo||'(sem título)')}</h3>
+      <span class="badge" style="background:${cor}22;color:${cor}">${escP(a.status||'—')}</span>
     </div>
-    <div class="sub">👤 ${escP(p.tecnico||'sem responsável')}</div>
-    ${p.prazo?`<div class="sub" style="color:#e65100;font-weight:600">📅 ${fmtPrazo(p.prazo)}</div>`:''}
-    ${ip?`<div style="font-size:.74rem;margin-bottom:6px">🔗 <a href="${escP(ip)}" target="_blank" rel="noopener" style="color:var(--azul);font-weight:600">${escP(p.ip)}</a></div>`:''}
-    ${p.info?`<div style="font-size:.78rem;color:#555;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${escP(p.info)}</div>`:''}
+    <div class="sub" style="display:flex;align-items:center;gap:5px">
+      <span class="prio-dot" style="background:${prioColor(prio)}"></span><span style="font-weight:600">${escP(prio)}</span>
+      <span>· 👤 ${escP(a.responsavel||'sem responsável')}</span>
+    </div>
+    ${a.prazo?`<div class="sub" style="color:#e65100;font-weight:600">📅 ${fmtPrazo(a.prazo)}</div>`:''}
+    ${a.info?`<div style="font-size:.78rem;color:#555;margin:4px 0 6px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap">${escP(a.info)}</div>`:''}
     <div class="cc-actions">
-      <span style="font-size:.72rem;color:#888;flex:1">${atv.length?`✅ ${atvFeito}/${atv.length} · `:''}📝 ${obs}</span>
-      <button class="btn btn-blue btn-sm" data-id="${p._id}">Abrir</button>
+      <span style="font-size:.72rem;color:#888;flex:1">${sub.length?`✅ ${subFeito}/${sub.length} · `:''}📝 ${obs}</span>
+      <button class="btn btn-blue btn-sm" data-id="${a._id}">Abrir</button>
     </div>`;
-  el.querySelector('button').onclick=()=>abrirProjeto(p._id);
+  el.querySelector('.atv-card-check').onclick=(e)=>{e.stopPropagation();toggleConcluido(a._id);};
+  el.querySelector('button').onclick=()=>abrirAtividade(a._id);
   return el;
 }
+window.toggleConcluido=async function(id){
+  const a=atividades.find(x=>x._id===id);if(!a||!db)return;
+  const novo=a.status==='Concluído'?'Em andamento':'Concluído';
+  try{await updateDoc(doc(db,'atividades',id),{status:novo,feito:novo==='Concluído',atualizadoEm:serverTimestamp()});}
+  catch(e){showToast('❌ Erro','#c62828');}
+};
 
 function renderObs(arr){
   const box=document.getElementById('pjObs');
-  if(!arr||!arr.length){box.innerHTML='<p style="font-size:.74rem;color:#aaa;margin:2px">Sem observações ainda.</p>';return;}
+  if(!arr||!arr.length){box.innerHTML='<p class="empty-mini">Sem observações ainda.</p>';return;}
   box.innerHTML=arr.slice().reverse().map(o=>`
     <div class="obs-card" style="border-left:3px solid var(--azul);padding:4px 8px;margin-bottom:5px;border-radius:4px">
       <div class="atv-txt" style="font-size:.78rem;white-space:pre-wrap">${escP(o.texto)}</div>
@@ -773,115 +818,182 @@ function renderObs(arr){
     </div>`).join('');
 }
 
-// ATIVIDADES (checklist vinculada ao projeto)
-function renderAtv(arr){
+// SUBTAREFAS (checklist dentro da atividade)
+function renderSub(arr){
   const box=document.getElementById('pjAtv');
-  if(!arr||!arr.length){box.innerHTML='<p style="font-size:.74rem;color:#aaa;margin:2px">Sem atividades ainda.</p>';return;}
+  if(!arr||!arr.length){box.innerHTML='<p class="empty-mini">Sem subtarefas ainda.</p>';return;}
   box.innerHTML=arr.map((a,i)=>`
     <div style="display:flex;align-items:center;gap:7px;padding:3px 2px">
-      <span onclick="toggleAtividade(${i})" title="marcar" style="cursor:pointer;width:18px;height:18px;border:2px solid ${a.feito?'#2e7d32':'#bbb'};background:${a.feito?'#2e7d32':'#fff'};color:#fff;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex:none">${a.feito?'✓':''}</span>
-      <span class="atv-txt" style="flex:1;font-size:.8rem;${a.feito?'text-decoration:line-through;opacity:.55':''}">${escP(a.texto)}${a.responsavel?` <span style="font-size:.68rem;color:#1565c0">· ${escP(a.responsavel)}</span>`:''}</span>
-      <span onclick="removeAtividade(${i})" title="remover" style="cursor:pointer;color:#c62828;font-weight:900;font-size:.9rem;padding:0 3px">×</span>
+      <span class="chk ${a.feito?'on':''}" onclick="toggleSubtarefa(${i})" title="marcar">${a.feito?'✓':''}</span>
+      <span class="atv-txt" style="flex:1;font-size:.8rem;${a.feito?'text-decoration:line-through;opacity:.55':''}">${escP(a.texto)}</span>
+      <span onclick="removeSubtarefa(${i})" title="remover" style="cursor:pointer;color:#c62828;font-weight:900;font-size:.9rem;padding:0 3px">×</span>
     </div>`).join('');
 }
-function persistAtv(){
+function persistSub(){
   if(!projAtual||!db)return Promise.resolve();
-  return updateDoc(doc(db,'projetos',projAtual),{atividades:atvEdit,atualizadoEm:serverTimestamp()});
+  return updateDoc(doc(db,'atividades',projAtual),{subtarefas:subEdit,atualizadoEm:serverTimestamp()});
 }
-window.addAtividade=async function(){
+window.addSubtarefa=async function(){
   const t=document.getElementById('pjAtvTexto').value.trim();
-  const resp=document.getElementById('pjAtvResp').value;
   if(!t)return;
-  if(!projAtual){showToast('💾 Salve o projeto antes de adicionar atividades','#e65100');return;}
-  atvEdit.push({texto:t,responsavel:resp||'',feito:false,em:new Date().toLocaleString('pt-BR')});
-  document.getElementById('pjAtvTexto').value='';renderAtv(atvEdit);
-  try{await persistAtv();showToast('✅ Atividade adicionada');}catch(e){showToast('❌ Erro ao salvar atividade','#c62828');}
+  if(!projAtual){showToast('💾 Salve a atividade antes de adicionar subtarefas','#e65100');return;}
+  subEdit.push({texto:t,feito:false,em:new Date().toLocaleString('pt-BR')});
+  document.getElementById('pjAtvTexto').value='';renderSub(subEdit);
+  try{await persistSub();showToast('✅ Subtarefa adicionada');}catch(e){showToast('❌ Erro ao salvar subtarefa','#c62828');}
 };
-window.toggleAtividade=async function(i){
-  if(!atvEdit[i])return;
-  atvEdit[i].feito=!atvEdit[i].feito;renderAtv(atvEdit);
-  try{await persistAtv();}catch(e){showToast('❌ Erro','#c62828');}
+window.toggleSubtarefa=async function(i){
+  if(!subEdit[i])return;
+  subEdit[i].feito=!subEdit[i].feito;renderSub(subEdit);
+  try{await persistSub();}catch(e){showToast('❌ Erro','#c62828');}
 };
-window.removeAtividade=async function(i){
-  atvEdit.splice(i,1);renderAtv(atvEdit);
-  try{await persistAtv();}catch(e){showToast('❌ Erro','#c62828');}
+window.removeSubtarefa=async function(i){
+  subEdit.splice(i,1);renderSub(subEdit);
+  try{await persistSub();}catch(e){showToast('❌ Erro','#c62828');}
 };
 
-window.abrirProjeto=function(id){
+window.abrirAtividade=function(id){
   const tecs=tecnicosList();
   preencherTecSelect('pjTecnico', tecs, false);
   preencherTecSelect('pjObsAutor', tecs, false);
-  preencherTecSelect('pjAtvResp', tecs, false);
   if(id){
-    const p=projetos.find(x=>x._id===id);if(!p)return;
+    const a=atividades.find(x=>x._id===id);if(!a)return;
     projAtual=id;
-    document.getElementById('mProjTitulo').textContent='🚀 Editar Projeto';
+    document.getElementById('mProjTitulo').textContent='✅ Editar Atividade';
     document.getElementById('pjId').value=id;
-    document.getElementById('pjNome').value=p.nome||'';
-    document.getElementById('pjStatus').value=p.status||'Planejado';
-    document.getElementById('pjTecnico').value=p.tecnico||'';
-    document.getElementById('pjIp').value=p.ip||'';
-    document.getElementById('pjInfo').value=p.info||'';
-    document.getElementById('pjPrazo').value=p.prazo||'';
+    document.getElementById('pjNome').value=a.titulo||'';
+    document.getElementById('pjStatus').value=a.status||'Planejado';
+    document.getElementById('pjTecnico').value=a.responsavel||'';
+    document.getElementById('pjPrio').value=a.prioridade||'Média';
+    document.getElementById('pjInfo').value=a.info||'';
+    document.getElementById('pjPrazo').value=a.prazo||'';
     document.getElementById('pjBtnExcluir').style.display='inline-block';
-    renderObs(p.observacoes||[]);atvEdit=(p.atividades||[]).slice();
+    renderObs(a.observacoes||[]);subEdit=(a.subtarefas||[]).slice();
   }else{
     projAtual=null;
-    document.getElementById('mProjTitulo').textContent='🚀 Novo Projeto';
-    ['pjId','pjNome','pjIp','pjInfo','pjPrazo'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('mProjTitulo').textContent='✅ Nova Atividade';
+    ['pjId','pjNome','pjInfo','pjPrazo'].forEach(i=>document.getElementById(i).value='');
     document.getElementById('pjStatus').value='Em andamento';
     document.getElementById('pjTecnico').value='';
+    document.getElementById('pjPrio').value='Média';
     document.getElementById('pjBtnExcluir').style.display='none';
-    renderObs([]);atvEdit=[];
+    renderObs([]);subEdit=[];
   }
   document.getElementById('pjObsTexto').value='';
-  document.getElementById('pjAtvTexto').value='';renderAtv(atvEdit);
+  document.getElementById('pjAtvTexto').value='';renderSub(subEdit);
   const la=localStorage.getItem('proj-autor');if(la)document.getElementById('pjObsAutor').value=la;
   document.getElementById('mProjBg').classList.add('open');
 };
 window.fecharProj=function(){document.getElementById('mProjBg').classList.remove('open');projAtual=null;};
 
-window.salvarProjeto=async function(){
+window.salvarAtividade=async function(){
   if(!db){showToast('❌ Firebase não conectado','#c62828');return;}
-  const nome=document.getElementById('pjNome').value.trim();
-  if(!nome){showToast('⚠️ Informe o nome do projeto','#e65100');return;}
+  const titulo=document.getElementById('pjNome').value.trim();
+  if(!titulo){showToast('⚠️ Informe o título da atividade','#e65100');return;}
+  const status=document.getElementById('pjStatus').value;
   const data={
-    nome,
-    status:document.getElementById('pjStatus').value,
-    tecnico:document.getElementById('pjTecnico').value,
-    ip:document.getElementById('pjIp').value.trim(),
+    titulo,
+    status,
+    feito:status==='Concluído',
+    responsavel:document.getElementById('pjTecnico').value,
+    prioridade:document.getElementById('pjPrio').value,
     info:document.getElementById('pjInfo').value.trim(),
     prazo:document.getElementById('pjPrazo').value||'',
     atualizadoEm:serverTimestamp()
   };
   try{
     const id=document.getElementById('pjId').value;
-    if(id){await updateDoc(doc(db,'projetos',id),data);}
-    else{data.observacoes=[];data.criadoEm=serverTimestamp();await addDoc(collection(db,'projetos'),data);}
-    showToast('💾 Projeto salvo!');fecharProj();
-  }catch(e){showToast('❌ Erro ao salvar projeto','#c62828');console.error(e);}
+    if(id){await updateDoc(doc(db,'atividades',id),data);}
+    else{data.subtarefas=[];data.observacoes=[];data.criadoEm=serverTimestamp();await addDoc(collection(db,'atividades'),data);}
+    showToast('💾 Atividade salva!');fecharProj();
+  }catch(e){showToast('❌ Erro ao salvar atividade','#c62828');console.error(e);}
 };
 
 window.addObservacao=async function(){
   const txt=document.getElementById('pjObsTexto').value.trim();
   const autor=document.getElementById('pjObsAutor').value;
   if(!txt)return;
-  if(!projAtual){showToast('💾 Salve o projeto antes de observar','#e65100');return;}
+  if(!projAtual){showToast('💾 Salve a atividade antes de observar','#e65100');return;}
   localStorage.setItem('proj-autor',autor||'');
-  const p=projetos.find(x=>x._id===projAtual);
-  const obs=((p&&p.observacoes)||[]).slice();
+  const a=atividades.find(x=>x._id===projAtual);
+  const obs=((a&&a.observacoes)||[]).slice();
   obs.push({texto:txt,autor:autor||'',em:new Date().toLocaleString('pt-BR')});
   try{
-    await updateDoc(doc(db,'projetos',projAtual),{observacoes:obs,atualizadoEm:serverTimestamp()});
+    await updateDoc(doc(db,'atividades',projAtual),{observacoes:obs,atualizadoEm:serverTimestamp()});
     document.getElementById('pjObsTexto').value='';renderObs(obs);showToast('📝 Observação adicionada');
   }catch(e){showToast('❌ Erro ao adicionar observação','#c62828');}
 };
 
-window.excluirProjeto=async function(){
+window.excluirAtividade=async function(){
   const id=document.getElementById('pjId').value;if(!id)return;
-  if(!confirm('Excluir este projeto? Esta ação não pode ser desfeita.'))return;
-  try{await deleteDoc(doc(db,'projetos',id));showToast('🗑️ Projeto excluído');fecharProj();}
+  if(!confirm('Excluir esta atividade? Esta ação não pode ser desfeita.'))return;
+  try{await deleteDoc(doc(db,'atividades',id));showToast('🗑️ Atividade excluída');fecharProj();}
   catch(e){showToast('❌ Erro ao excluir','#c62828');}
+};
+
+// MIGRAÇÃO — explode projetos antigos em atividades avulsas (1x, idempotente, não apaga nada)
+function pendentesMigracao(){return projetosLegado.filter(p=>!p.migradoEm);}
+function atualizarBotaoMigrar(){
+  const btn=document.getElementById('btnMigrar');if(!btn)return;
+  const n=pendentesMigracao().length;
+  if(n>0){btn.style.display='inline-block';btn.textContent=`⤵️ Migrar projetos antigos (${n})`;}
+  else{btn.style.display='none';}
+}
+window.migrarProjetos=async function(){
+  if(!db)return;
+  const pend=pendentesMigracao();
+  if(!pend.length){showToast('Nada para migrar');return;}
+  if(!confirm(`Migrar ${pend.length} projeto(s) antigo(s) para atividades? Os projetos originais são preservados como backup.`))return;
+  const btn=document.getElementById('btnMigrar');if(btn){btn.disabled=true;btn.textContent='Migrando...';}
+  let criadas=0, falhas=0;
+  for(const p of pend){
+    try{
+      const link=p.ip?`\nLink: ${p.ip}`:'';
+      const baseInfo=(p.info||'')+link;
+      const filhos=Array.isArray(p.atividades)?p.atividades:[];
+      if(filhos.length){
+        for(let k=0;k<filhos.length;k++){
+          const a=filhos[k];
+          const st=a.feito?'Concluído':(p.status||'Em andamento');
+          await setDoc(doc(db,'atividades',`mig_${p._id}_${k}`),{
+            titulo:a.texto||'(sem título)',
+            status:st,
+            feito:st==='Concluído',
+            responsavel:a.responsavel||p.tecnico||'',
+            prioridade:'Média',
+            info:baseInfo,
+            prazo:p.prazo||'',
+            subtarefas:[],
+            observacoes:k===0?(p.observacoes||[]):[],
+            origemProjeto:p.nome||'',
+            criadoEm:serverTimestamp(),
+            atualizadoEm:serverTimestamp()
+          });
+          criadas++;
+        }
+      }else{
+        await setDoc(doc(db,'atividades',`mig_${p._id}`),{
+          titulo:p.nome||'(sem título)',
+          status:p.status||'Em andamento',
+          feito:(p.status||'')==='Concluído',
+          responsavel:p.tecnico||'',
+          prioridade:'Média',
+          info:baseInfo,
+          prazo:p.prazo||'',
+          subtarefas:[],
+          observacoes:p.observacoes||[],
+          origemProjeto:p.nome||'',
+          criadoEm:serverTimestamp(),
+          atualizadoEm:serverTimestamp()
+        });
+        criadas++;
+      }
+      await updateDoc(doc(db,'projetos',p._id),{migradoEm:serverTimestamp()});
+    }catch(e){console.error('migração projeto',p._id,e);falhas++;}
+  }
+  if(falhas) showToast(`⚠️ Migração: ${criadas} atividade(s), ${falhas} projeto(s) com erro`,'#e65100');
+  else showToast(`✅ Migração concluída: ${criadas} atividade(s)`);
+  if(btn){btn.disabled=false;}
+  atualizarBotaoMigrar();
 };
 
 // FILTROS
