@@ -811,11 +811,16 @@ window.toggleConcluido=async function(id){
 function renderObs(arr){
   const box=document.getElementById('pjObs');
   if(!arr||!arr.length){box.innerHTML='<p class="empty-mini">Sem observações ainda.</p>';return;}
-  box.innerHTML=arr.slice().reverse().map(o=>`
+  box.innerHTML=arr.map((o,i)=>`
     <div class="obs-card" style="border-left:3px solid var(--azul);padding:4px 8px;margin-bottom:5px;border-radius:4px">
-      <div class="atv-txt" style="font-size:.78rem;white-space:pre-wrap">${escP(o.texto)}</div>
-      <div style="font-size:.67rem;color:#999;margin-top:2px">${escP(o.autor||'—')} · ${escP(o.em||'')}</div>
-    </div>`).join('');
+      <div style="display:flex;gap:6px;align-items:flex-start">
+        <div style="flex:1;min-width:0">
+          <div class="atv-txt" style="font-size:.78rem;white-space:pre-wrap">${escP(o.texto)}</div>
+          <div style="font-size:.67rem;color:#999;margin-top:2px">${escP(o.autor||'—')} · ${escP(o.em||'')}</div>
+        </div>
+        <span onclick="removeObservacao(${i})" title="excluir observação" style="cursor:pointer;color:#c62828;font-weight:900;font-size:.9rem;padding:0 3px">×</span>
+      </div>
+    </div>`).reverse().join('');
 }
 
 // SUBTAREFAS (checklist dentro da atividade)
@@ -921,6 +926,19 @@ window.addObservacao=async function(){
     await updateDoc(doc(db,'atividades',projAtual),{observacoes:obs,atualizadoEm:serverTimestamp()});
     document.getElementById('pjObsTexto').value='';renderObs(obs);showToast('📝 Observação adicionada');
   }catch(e){showToast('❌ Erro ao adicionar observação','#c62828');}
+};
+
+window.removeObservacao=async function(i){
+  if(!projAtual||!db)return;
+  const a=atividades.find(x=>x._id===projAtual);
+  const obs=((a&&a.observacoes)||[]).slice();
+  if(!obs[i])return;
+  if(!confirm('Excluir esta observação? Esta ação não pode ser desfeita.'))return;
+  obs.splice(i,1);
+  try{
+    await updateDoc(doc(db,'atividades',projAtual),{observacoes:obs,atualizadoEm:serverTimestamp()});
+    renderObs(obs);showToast('🗑️ Observação excluída');
+  }catch(e){showToast('❌ Erro ao excluir observação','#c62828');}
 };
 
 window.excluirAtividade=async function(){
