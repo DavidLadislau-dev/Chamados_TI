@@ -65,6 +65,7 @@ tr:hover td{background:#f5f8fb}
 .modal-field p{color:#222;line-height:1.5;word-break:break-word}
 .atv-txt{color:#333}
 .obs-card{background:#fff}
+.diario-dia{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--azul);margin:0 0 6px 2px}
 .modal-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:16px}
 .form-row{margin-bottom:12px}
 .form-row label{display:block;font-size:.79rem;font-weight:700;color:#555;margin-bottom:4px}
@@ -285,11 +286,21 @@ body.dark [style*="color:#2e7d32"]{color:#7dcb82 !important}
       <button id="vwCards" class="btn btn-blue btn-sm" onclick="projView('cards')">🗂️ Cards</button>
       <button id="vwKanban" class="btn btn-gray btn-sm" onclick="projView('kanban')">📌 Kanban</button>
       <button id="vwCal" class="btn btn-gray btn-sm" onclick="projView('cal')">📅 Calendário</button>
+      <button id="vwDiario" class="btn btn-gray btn-sm" onclick="projView('diario')">📔 Diário</button>
     </span>
   </div>
   <div class="campos-grid" id="projGrid"></div>
   <div id="projCal" style="display:none;background:#fff;border-radius:10px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);max-width:1100px"></div>
   <div id="projKanban" style="display:none"></div>
+  <div id="projDiario" style="display:none;max-width:780px">
+    <div class="toolbar">
+      <input type="date" id="diData" style="flex:0 0 auto;width:150px;min-width:0">
+      <select id="diAutor"></select>
+      <input id="diTexto" placeholder="O que foi feito? Ex.: Varredura das câmeras ok; fechei o chamado #123..." onkeydown="if(event.key==='Enter')addDiario()">
+      <button class="btn btn-blue" onclick="addDiario()">➕ Registrar</button>
+    </div>
+    <div id="diarioLista"></div>
+  </div>
   <div id="projEmpty" class="empty" style="display:none">Nenhuma atividade ainda. Clique em "➕ Nova Atividade".</div>
 </div>
 
@@ -524,7 +535,7 @@ const firebaseConfig = {
 // ============================================================
 
 let dados=[], pag=1, POR_PAG=15, modalDocId=null, db=null, chatUnsub=null;
-let atividades=[], projAtual=null, projetosLegado=[];
+let atividades=[], projAtual=null, projetosLegado=[], diario=[];
 let campos = [
   {id:'nome',label:'Nome / Identificação',type:'select',required:true,locked:true,
    options:['ALEX CASTELO','AMANDA FAVACHO','AMANDA PIEDADE','ANA PAULA','ANDREIA DAMASCENO','BIANCA NORONHA','BRUNA COSTA','BRUNO CAVALCANTE','CAMILA DONATO','CARLOS COSTA','CLAUDETE CONCEIÇÃO','CLEIDE AMANAJÁS','DANIELLE ROSA','DAVID JESUS','DAYANE ALMEIDA','DÉBORA BORGES','EDILSON JUNIOR','EDSON DUARTE','FRANCY BRITO','GEORGINA ULIANA','GIOVANNI CUNHA','GIRLEIDE SILVA','GUSTAVO SUP.TECNICO','HUATILA RODRIGUES','ICARO SANTOS','INGREDY SILVA','ISAIAS MALCHER','IZABELA FERREIRA','JAMILY CRUZ','JOYSE SENA','JOZIANA ROSARIO','JULIANA AROUCA','KAREN RESENDE','KELLY PASSOS','LABELLE PEREIRA','LETICIA ESCAMILLA','LUCIENE RODRIGUES','MARCUS ARAUJO','MARCOS DA SILVA','MARCOS SENA','MARIANA FRAZÃO','NAIANE SODRE','NATAN RIBEIRO','ORLANDO LIMA','PAMELA MIRANDA','RAIMUNDA BARBÁRA','RAYLENE LOBATO','ROBERTO NASCIMENTO','SIMONE SANTOS','SOCORRO AFONSO','SUELLEN MAXIMIANO','TAINÁ CASTRO','TAYNARA ARCANJO','TIAGO NASCIMENTO','VALERIA SOUZA','WARLEN','MALU MATOS']},
@@ -623,6 +634,11 @@ try {
     atividades=snap.docs.map(d=>({_id:d.id,...d.data()}));
     if(document.getElementById('page-atividades').classList.contains('active')) renderAtividades();
   }, err=>console.warn('atividades snapshot',err));
+  // Listener tempo real do diário (atividades diárias do estagiário)
+  onSnapshot(query(collection(db,'diario'),orderBy('criadoEm','desc')), snap=>{
+    diario=snap.docs.map(d=>({_id:d.id,...d.data()}));
+    if(document.getElementById('page-atividades').classList.contains('active')&&projViewMode==='diario') renderDiario();
+  }, err=>console.warn('diario snapshot',err));
   // Projetos legados — só para oferecer a migração 1x (coleção preservada como backup)
   onSnapshot(collection(db,'projetos'), snap=>{
     projetosLegado=snap.docs.map(d=>({_id:d.id,...d.data()}));
@@ -701,6 +717,7 @@ window.renderAtividades=function(){
   lista.forEach(a=>g.appendChild(cardAtividade(a)));
   if(projViewMode==='cal'&&projCal) projCal.refetchEvents();
   if(projViewMode==='kanban') renderKanban();
+  if(projViewMode==='diario') renderDiario();
   atualizarBotaoMigrar();
 };
 
@@ -710,8 +727,9 @@ window.projView=function(v){
   document.getElementById('projGrid').style.display=(v==='cards')?'grid':'none';
   document.getElementById('projCal').style.display=(v==='cal')?'block':'none';
   document.getElementById('projKanban').style.display=(v==='kanban')?'block':'none';
+  document.getElementById('projDiario').style.display=(v==='diario')?'block':'none';
   const setBtn=(id,on)=>document.getElementById(id).className='btn btn-sm '+(on?'btn-blue':'btn-gray');
-  setBtn('vwCards',v==='cards');setBtn('vwKanban',v==='kanban');setBtn('vwCal',v==='cal');
+  setBtn('vwCards',v==='cards');setBtn('vwKanban',v==='kanban');setBtn('vwCal',v==='cal');setBtn('vwDiario',v==='diario');
   if(v==='cal'){ initProjCal(); if(projCal){projCal.updateSize();projCal.refetchEvents();} }
   renderAtividades();
 };
@@ -945,6 +963,69 @@ window.excluirAtividade=async function(){
   const id=document.getElementById('pjId').value;if(!id)return;
   if(!confirm('Excluir esta atividade? Esta ação não pode ser desfeita.'))return;
   try{await deleteDoc(doc(db,'atividades',id));showToast('🗑️ Atividade excluída');fecharProj();}
+  catch(e){showToast('❌ Erro ao excluir','#c62828');}
+};
+
+// DIÁRIO — atividades diárias do estagiário
+function hojeStr(off){
+  const d=new Date();if(off)d.setDate(d.getDate()+off);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function diaLabel(s){
+  const p=String(s).split('-');
+  const nome=p.length===3?new Date(+p[0],+p[1]-1,+p[2]).toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}):s;
+  if(s===hojeStr())return 'Hoje · '+nome;
+  if(s===hojeStr(-1))return 'Ontem · '+nome;
+  return nome;
+}
+window.renderDiario=function(){
+  preencherTecSelect('diAutor', tecnicosList(), false);
+  const selAutor=document.getElementById('diAutor');
+  const la=localStorage.getItem('proj-autor');
+  if(la&&!selAutor.value)selAutor.value=la;
+  const dt=document.getElementById('diData');if(!dt.value)dt.value=hojeStr();
+  const b=(document.getElementById('projBusca').value||'').toLowerCase();
+  const ft=document.getElementById('projFTec').value;
+  const lista=diario.filter(r=>{
+    if(b && !(r.texto+' '+(r.autor||'')).toLowerCase().includes(b))return false;
+    if(ft && r.autor!==ft)return false;
+    return true;
+  });
+  const box=document.getElementById('diarioLista');
+  if(!lista.length){box.innerHTML='<div class="empty">Nenhum registro ainda. Escreva o que foi feito no dia e clique em "➕ Registrar".</div>';return;}
+  const dias={};
+  lista.forEach(r=>{const d=r.data||'—';(dias[d]=dias[d]||[]).push(r);});
+  box.innerHTML=Object.keys(dias).sort().reverse().map(d=>`
+    <div style="margin-bottom:16px">
+      <div class="diario-dia">${escP(diaLabel(d))} <span style="font-weight:400;opacity:.7">· ${dias[d].length} registro${dias[d].length>1?'s':''}</span></div>
+      ${dias[d].slice().sort((x,y)=>((x.criadoEm&&x.criadoEm.seconds)||0)-((y.criadoEm&&y.criadoEm.seconds)||0)).map(r=>`
+        <div class="obs-card" style="border-left:3px solid var(--verde);padding:6px 10px;margin-bottom:5px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
+          <div style="display:flex;gap:6px;align-items:flex-start">
+            <div style="flex:1;min-width:0">
+              <div class="atv-txt" style="font-size:.8rem;white-space:pre-wrap">${escP(r.texto)}</div>
+              <div style="font-size:.67rem;color:#999;margin-top:2px">${escP(r.autor||'—')}${r.em?' · '+escP(r.em):''}</div>
+            </div>
+            <span onclick="removeDiario('${r._id}')" title="excluir registro" style="cursor:pointer;color:#c62828;font-weight:900;font-size:.9rem;padding:0 3px">×</span>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+};
+window.addDiario=async function(){
+  if(!db){showToast('❌ Firebase não conectado','#c62828');return;}
+  const txt=document.getElementById('diTexto').value.trim();
+  const autor=document.getElementById('diAutor').value;
+  const data=document.getElementById('diData').value||hojeStr();
+  if(!txt){showToast('⚠️ Descreva a atividade feita','#e65100');return;}
+  if(!autor){showToast('⚠️ Selecione quem fez','#e65100');return;}
+  localStorage.setItem('proj-autor',autor);
+  try{
+    await addDoc(collection(db,'diario'),{texto:txt,autor,data,em:new Date().toLocaleTimeString('pt-BR').slice(0,5),criadoEm:serverTimestamp()});
+    document.getElementById('diTexto').value='';showToast('📔 Registro adicionado');
+  }catch(e){showToast('❌ Erro ao salvar registro','#c62828');console.error(e);}
+};
+window.removeDiario=async function(id){
+  if(!confirm('Excluir este registro do diário? Esta ação não pode ser desfeita.'))return;
+  try{await deleteDoc(doc(db,'diario',id));showToast('🗑️ Registro excluído');}
   catch(e){showToast('❌ Erro ao excluir','#c62828');}
 };
 
