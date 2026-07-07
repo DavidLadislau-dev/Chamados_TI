@@ -66,6 +66,10 @@ tr:hover td{background:#f5f8fb}
 .atv-txt{color:#333}
 .obs-card{background:#fff}
 .diario-dia{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--azul);margin:0 0 6px 2px}
+#projCal{background:#fff;border-radius:10px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);max-width:1100px;--fc-today-bg-color:rgba(249,168,37,.14)}
+body.dark #projCal{background:#1a2535;box-shadow:0 1px 4px rgba(0,0,0,.4);--fc-border-color:#33425e;--fc-page-bg-color:#1a2535;--fc-neutral-bg-color:#22344a;--fc-today-bg-color:rgba(91,155,213,.18);--fc-list-event-hover-bg-color:#22344a}
+body.dark #projCal .fc-toolbar-title,body.dark #projCal .fc-daygrid-day-number,body.dark #projCal .fc-col-header-cell-cushion{color:#d8dde3}
+body.dark #projCal .fc-day-other .fc-daygrid-day-number{color:#6b7a8e}
 .modal-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:16px}
 .form-row{margin-bottom:12px}
 .form-row label{display:block;font-size:.79rem;font-weight:700;color:#555;margin-bottom:4px}
@@ -290,12 +294,22 @@ body.dark [style*="color:#2e7d32"]{color:#7dcb82 !important}
     </span>
   </div>
   <div class="campos-grid" id="projGrid"></div>
-  <div id="projCal" style="display:none;background:#fff;border-radius:10px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);max-width:1100px"></div>
+  <div id="projCal" style="display:none"></div>
   <div id="projKanban" style="display:none"></div>
   <div id="projDiario" style="display:none;max-width:780px">
     <div class="toolbar">
       <input type="date" id="diData" style="flex:0 0 auto;width:150px;min-width:0">
       <select id="diAutor"></select>
+      <span style="font-size:.72rem;color:#888">Início</span>
+      <input type="time" id="diIni" title="Horário de início" style="flex:0 0 auto;width:105px;min-width:0">
+      <span style="font-size:.72rem;color:#888">Fim</span>
+      <input type="time" id="diFim" title="Horário de fim" style="flex:0 0 auto;width:105px;min-width:0">
+      <select id="diImpacto" title="Nível de impacto no setor">
+        <option value="">Impacto: —</option>
+        <option value="Baixo">Impacto: Baixo</option>
+        <option value="Médio">Impacto: Médio</option>
+        <option value="Alto">Impacto: Alto</option>
+      </select>
       <input id="diTexto" placeholder="O que foi feito? Ex.: Varredura das câmeras ok; fechei o chamado #123..." onkeydown="if(event.key==='Enter')addDiario()">
       <button class="btn btn-blue" onclick="addDiario()">➕ Registrar</button>
     </div>
@@ -978,6 +992,14 @@ function diaLabel(s){
   if(s===hojeStr(-1))return 'Ontem · '+nome;
   return nome;
 }
+function minutosHM(h){const p=String(h||'').split(':');return p.length===2&&p[0]!==''?(+p[0])*60+(+p[1]):null;}
+function fmtDur(min){if(min==null||min<=0)return '';const h=Math.floor(min/60),m=min%60;if(h&&m)return h+'h'+String(m).padStart(2,'0');if(h)return h+'h';return m+'min';}
+function impactoChip(v){const c={'Baixo':'#7cb342','Médio':'#f9a825','Alto':'#e53935'}[v];if(!c)return '';return `<span title="Impacto no setor" style="font-size:.62rem;font-weight:700;color:#fff;background:${c};border-radius:4px;padding:1px 6px;white-space:nowrap">${escP(v)}</span>`;}
+function horLabel(r){
+  if(r.inicio&&r.fim){const d=fmtDur(minutosHM(r.fim)-minutosHM(r.inicio));return r.inicio+'–'+r.fim+(d?' ('+d+')':'');}
+  if(r.inicio)return 'início '+r.inicio;
+  return r.em||'';
+}
 window.renderDiario=function(){
   preencherTecSelect('diAutor', tecnicosList(), false);
   const selAutor=document.getElementById('diAutor');
@@ -995,32 +1017,49 @@ window.renderDiario=function(){
   if(!lista.length){box.innerHTML='<div class="empty">Nenhum registro ainda. Escreva o que foi feito no dia e clique em "➕ Registrar".</div>';return;}
   const dias={};
   lista.forEach(r=>{const d=r.data||'—';(dias[d]=dias[d]||[]).push(r);});
-  box.innerHTML=Object.keys(dias).sort().reverse().map(d=>`
+  box.innerHTML=Object.keys(dias).sort().reverse().map(d=>{
+    const regs=dias[d].slice().sort((x,y)=>{
+      const a=minutosHM(x.inicio),b2=minutosHM(y.inicio);
+      if(a!=null&&b2!=null)return a-b2;
+      if(a!=null)return -1;if(b2!=null)return 1;
+      return ((x.criadoEm&&x.criadoEm.seconds)||0)-((y.criadoEm&&y.criadoEm.seconds)||0);
+    });
+    const tot=regs.reduce((s,r)=>{const a=minutosHM(r.inicio),b2=minutosHM(r.fim);return (a!=null&&b2!=null&&b2>a)?s+(b2-a):s;},0);
+    return `
     <div style="margin-bottom:16px">
-      <div class="diario-dia">${escP(diaLabel(d))} <span style="font-weight:400;opacity:.7">· ${dias[d].length} registro${dias[d].length>1?'s':''}</span></div>
-      ${dias[d].slice().sort((x,y)=>((x.criadoEm&&x.criadoEm.seconds)||0)-((y.criadoEm&&y.criadoEm.seconds)||0)).map(r=>`
+      <div class="diario-dia">${escP(diaLabel(d))} <span style="font-weight:400;opacity:.7">· ${regs.length} registro${regs.length>1?'s':''}${tot?' · '+fmtDur(tot)+' registradas':''}</span></div>
+      ${regs.map(r=>`
         <div class="obs-card" style="border-left:3px solid var(--verde);padding:6px 10px;margin-bottom:5px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
           <div style="display:flex;gap:6px;align-items:flex-start">
             <div style="flex:1;min-width:0">
               <div class="atv-txt" style="font-size:.8rem;white-space:pre-wrap">${escP(r.texto)}</div>
-              <div style="font-size:.67rem;color:#999;margin-top:2px">${escP(r.autor||'—')}${r.em?' · '+escP(r.em):''}</div>
+              <div style="font-size:.67rem;color:#999;margin-top:2px">${escP(r.autor||'—')}${horLabel(r)?' · '+escP(horLabel(r)):''}</div>
             </div>
+            ${impactoChip(r.impacto)}
             <span onclick="removeDiario('${r._id}')" title="excluir registro" style="cursor:pointer;color:#c62828;font-weight:900;font-size:.9rem;padding:0 3px">×</span>
           </div>
         </div>`).join('')}
-    </div>`).join('');
+    </div>`;}).join('');
 };
 window.addDiario=async function(){
   if(!db){showToast('❌ Firebase não conectado','#c62828');return;}
   const txt=document.getElementById('diTexto').value.trim();
   const autor=document.getElementById('diAutor').value;
   const data=document.getElementById('diData').value||hojeStr();
+  const ini=document.getElementById('diIni').value;
+  const fim=document.getElementById('diFim').value;
+  const impacto=document.getElementById('diImpacto').value;
   if(!txt){showToast('⚠️ Descreva a atividade feita','#e65100');return;}
   if(!autor){showToast('⚠️ Selecione quem fez','#e65100');return;}
+  if(ini&&fim&&fim<=ini){showToast('⚠️ O horário de fim deve ser depois do início','#e65100');return;}
   localStorage.setItem('proj-autor',autor);
   try{
-    await addDoc(collection(db,'diario'),{texto:txt,autor,data,em:new Date().toLocaleTimeString('pt-BR').slice(0,5),criadoEm:serverTimestamp()});
-    document.getElementById('diTexto').value='';showToast('📔 Registro adicionado');
+    await addDoc(collection(db,'diario'),{texto:txt,autor,data,inicio:ini||'',fim:fim||'',impacto:impacto||'',em:new Date().toLocaleTimeString('pt-BR').slice(0,5),criadoEm:serverTimestamp()});
+    document.getElementById('diTexto').value='';
+    document.getElementById('diImpacto').value='';
+    // próximo registro já começa onde este terminou
+    if(fim){document.getElementById('diIni').value=fim;document.getElementById('diFim').value='';}
+    showToast('📔 Registro adicionado');
   }catch(e){showToast('❌ Erro ao salvar registro','#c62828');console.error(e);}
 };
 window.removeDiario=async function(id){
