@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Chamados T.I. — endereço atualizado</title>
+<link rel="canonical" href="https://davidladislau-dev.github.io/Chamados_TI/">
+<meta http-equiv="refresh" content="0; url=./">
+<style>
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a3a5c;
+     min-height:100vh;margin:0;display:flex;align-items:center;justify-content:center;padding:24px}
+.box{text-align:center;max-width:420px}
+h1{font-size:1.05rem;margin:0 0 8px}
+p{font-size:.88rem;color:#666;line-height:1.6;margin:0 0 16px}
+a{display:inline-block;background:#1a3a5c;color:#fff;text-decoration:none;
+  padding:11px 18px;border-radius:8px;font-size:.88rem;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="box">
+    <h1>🖥️ O endereço dos Chamados T.I. mudou</h1>
+    <p>Estamos te levando para a página certa. Se não abrir sozinho, toque no botão
+       — e atualize o atalho salvo no seu aparelho.</p>
+    <a href="./">Abrir Chamados T.I.</a>
+  </div>
+  <script>
+    // replace() e não href: evita que o endereço antigo fique no histórico e
+    // o "voltar" caia de novo aqui.
+    location.replace('./' + location.search + location.hash);
+  </script>
+</body>
+</html>
