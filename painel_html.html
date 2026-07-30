@@ -182,6 +182,7 @@ body.dark td{border-bottom-color:#22344a}
 body.dark tr:hover td{background:#22344a}
 body.dark .desc-c{color:#7fb6e0}
 body.dark input,body.dark select,body.dark textarea{background:#0f1721;color:#d8dde3;border-color:#2a3a52}
+body.dark input[type="date"]{color-scheme:dark}
 body.dark input::placeholder{color:#6b7a8e}
 body.dark .toolbar input,body.dark .toolbar select{background:#0f1721;color:#d8dde3}
 body.dark .modal{background:#1a2535;color:#d8dde3}
@@ -387,13 +388,21 @@ body.dark [style*="color:#2e7d32"]{color:#7dcb82 !important}
     <!-- Filtros do relatório -->
     <div style="background:#fff;border-radius:10px;padding:14px 18px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       <span style="font-size:.82rem;font-weight:700;color:#555">📅 Período:</span>
-      <select id="rPeriodo" onchange="atualizarRelatorio()" style="padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:.81rem;background:#fff">
+      <select id="rPeriodo" onchange="presetPeriodo()" style="padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:.81rem;background:#fff">
+        <option value="mes" selected>Este mês</option>
+        <option value="mespassado">Mês passado</option>
         <option value="7">Últimos 7 dias</option>
         <option value="15">Últimos 15 dias</option>
-        <option value="30" selected>Últimos 30 dias</option>
+        <option value="30">Últimos 30 dias</option>
         <option value="90">Últimos 90 dias</option>
         <option value="0">Todo o período</option>
+        <option value="custom">Personalizado</option>
       </select>
+      <span style="display:inline-flex;gap:6px;align-items:center">
+        <input type="date" id="rDe" min="2000-01-01" onchange="periodoCustom()" style="padding:6px 8px;border:1px solid #ccc;border-radius:6px;font-size:.81rem;background:#fff;font-family:inherit">
+        <span style="font-size:.78rem;color:#888">até</span>
+        <input type="date" id="rAte" min="2000-01-01" onchange="periodoCustom()" style="padding:6px 8px;border:1px solid #ccc;border-radius:6px;font-size:.81rem;background:#fff;font-family:inherit">
+      </span>
       <select id="rTecnico" onchange="atualizarRelatorio()" style="padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:.81rem;background:#fff">
         <option value="">Todos os Técnicos</option>
       </select>
@@ -409,7 +418,7 @@ body.dark [style*="color:#2e7d32"]{color:#7dcb82 !important}
     <!-- Gráficos linha 1 -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
       <div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
-        <div style="font-size:.84rem;font-weight:700;color:var(--azul);margin-bottom:10px">📅 Chamados por Dia</div>
+        <div id="tPorDia" style="font-size:.84rem;font-weight:700;color:var(--azul);margin-bottom:10px">📅 Chamados por Dia</div>
         <canvas id="cPorDia" height="180"></canvas>
       </div>
       <div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
@@ -1417,17 +1426,70 @@ function criarChart(id, config) {
   chartInstances[id] = new Chart(ctx, config);
 }
 
+// input date "YYYY-MM-DD" → Date local (new Date(str) parsearia como UTC e voltaria 1 dia no fuso -03)
+function dataLocal(v) {
+  if (!v) return null;
+  const [y,m,d] = v.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  dt.setFullYear(y); // sem isso, anos 0–99 viram 1900+y
+  return dt;
+}
+function fmtDataInput(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function aplicarPreset(v) {
+  const de = document.getElementById('rDe'), ate = document.getElementById('rAte');
+  const hoje = new Date();
+  if (v === 'custom') return;
+  if (v === '0') { de.value=''; ate.value=''; }
+  else if (v === 'mes') { de.value=fmtDataInput(new Date(hoje.getFullYear(),hoje.getMonth(),1)); ate.value=fmtDataInput(hoje); }
+  else if (v === 'mespassado') { de.value=fmtDataInput(new Date(hoje.getFullYear(),hoje.getMonth()-1,1)); ate.value=fmtDataInput(new Date(hoje.getFullYear(),hoje.getMonth(),0)); }
+  else { const d=new Date(hoje); d.setDate(d.getDate()-(parseInt(v)-1)); de.value=fmtDataInput(d); ate.value=fmtDataInput(hoje); }
+}
+
+window.presetPeriodo = function() {
+  aplicarPreset(document.getElementById('rPeriodo').value);
+  atualizarRelatorio();
+};
+
+window.periodoCustom = function() {
+  const deEl = document.getElementById('rDe'), ateEl = document.getElementById('rAte');
+  // digitar o ano dispara change com valores parciais (0002-, 0202-…) — só renderiza com ano plausível
+  for (const el of [deEl, ateEl]) {
+    const d = dataLocal(el.value);
+    if (d && d.getFullYear() < 2000) return;
+  }
+  const de = dataLocal(deEl.value), ate = dataLocal(ateEl.value);
+  if (de && ate && de > ate) {
+    const t = deEl.value; deEl.value = ateEl.value; ateEl.value = t;
+    showToast('⚠️ Período invertido — datas trocadas', '#e65100');
+  }
+  document.getElementById('rPeriodo').value = 'custom';
+  atualizarRelatorio();
+};
+
+function textoPeriodo() {
+  const deV = document.getElementById('rDe').value, ateV = document.getElementById('rAte').value;
+  const f = v => dataLocal(v).toLocaleDateString('pt-BR');
+  if (!deV && !ateV) return 'Todo o período';
+  if (deV && ateV) return `${f(deV)} até ${f(ateV)}`;
+  return deV ? `A partir de ${f(deV)}` : `Até ${f(ateV)}`;
+}
+
 function getDadosFiltrados() {
-  const dias = parseInt(document.getElementById('rPeriodo').value);
+  let de = dataLocal(document.getElementById('rDe').value);
+  let ate = dataLocal(document.getElementById('rAte').value);
+  if (de && ate && de > ate) { const t = de; de = ate; ate = t; }
+  if (ate) ate.setHours(23,59,59,999);
   const tecnico = document.getElementById('rTecnico').value;
   const setor = document.getElementById('rSetor2').value;
-  const agora = new Date();
   return dados.filter(d => {
-    if (dias > 0) {
+    if (de || ate) {
       const dt = d.criadoEm?.toDate?.() || null;
       if (!dt) return false;
-      const diff = (agora - dt) / (1000*60*60*24);
-      if (diff > dias) return false;
+      if (de && dt < de) return false;
+      if (ate && dt > ate) return false;
     }
     if (tecnico && d.sol !== tecnico) return false;
     if (setor && d.setor !== setor) return false;
@@ -1458,8 +1520,10 @@ function parseResMs(res) {
 }
 
 window.atualizarRelatorio = function() {
+  // painel (PWA) fica aberto por dias — presets acompanham o dia real a cada render
+  const preset = document.getElementById('rPeriodo').value;
+  if (preset !== 'custom') aplicarPreset(preset);
   const fil = getDadosFiltrados();
-  const dias = parseInt(document.getElementById('rPeriodo').value);
   popularFiltrosRelatorio();
 
   // ── KPIs ──
@@ -1477,10 +1541,14 @@ window.atualizarRelatorio = function() {
   const tmH = Math.floor(tmMedio/3600000), tmM = Math.floor((tmMedio%3600000)/60000);
   const tmStr = tempos.length ? `${tmH}h ${tmM}m` : '—';
 
-  // Chamados hoje
+  // Chamados hoje — sobre todos os dados (senão períodos passados, ex. Mês passado, zerariam o card)
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const hoje2 = new Date(); hoje2.setHours(23,59,59,999);
-  const hoje_n = fil.filter(d=>{ const dt=d.criadoEm?.toDate?.(); return dt&&dt>=hoje&&dt<=hoje2; }).length;
+  const fTec = document.getElementById('rTecnico').value, fSet = document.getElementById('rSetor2').value;
+  const hoje_n = dados.filter(d=>{
+    const dt=d.criadoEm?.toDate?.();
+    return dt&&dt>=hoje&&dt<=hoje2 && (!fTec||d.sol===fTec) && (!fSet||d.setor===fSet);
+  }).length;
 
   document.getElementById('kpis').innerHTML = `
     <div class="kpi"><div class="kn">${total}</div><div class="kl">Total de Chamados</div></div>
@@ -1491,20 +1559,40 @@ window.atualizarRelatorio = function() {
     <div class="kpi p"><div class="kn">${tmStr}</div><div class="kl">Tempo Médio Resolução</div></div>
     <div class="kpi"><div class="kn">${hoje_n}</div><div class="kl">Abertos Hoje</div></div>`;
 
-  // ── GRÁFICO: Chamados por dia ──
+  // ── GRÁFICO: Chamados por dia (segue o intervalo De/Até; range longo agrupa por mês) ──
+  const deIn = dataLocal(document.getElementById('rDe').value);
+  const ateIn = dataLocal(document.getElementById('rAte').value) || new Date();
+  let ini = deIn;
+  if (!ini) {
+    const dts = fil.map(d=>d.criadoEm?.toDate?.()).filter(Boolean);
+    ini = dts.length ? new Date(Math.min(...dts)) : new Date(ateIn);
+  }
+  ini = new Date(ini); ini.setHours(0,0,0,0);
+  const fim = new Date(ateIn); fim.setHours(0,0,0,0);
+  const tetoIni = new Date(fim); tetoIni.setFullYear(tetoIni.getFullYear()-20);
+  if (ini < tetoIni) ini = tetoIni; // trava buckets em 20 anos (dado torto não congela a UI)
+  const spanDias = Math.max(1, Math.round((fim-ini)/86400000)+1);
+  const porMes = spanDias > 120;
+  const kDia = dt => dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+  const kMes = dt => dt.toLocaleDateString('pt-BR',{month:'2-digit',year:'2-digit'});
   const porDia = {};
-  const qtdDias = dias > 0 ? dias : 30;
-  for (let i=qtdDias-1; i>=0; i--) {
-    const d = new Date(); d.setDate(d.getDate()-i); d.setHours(0,0,0,0);
-    const k = d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-    porDia[k] = 0;
+  if (porMes) {
+    const c = new Date(ini.getFullYear(), ini.getMonth(), 1);
+    while (c <= fim) { porDia[kMes(c)] = 0; c.setMonth(c.getMonth()+1); }
+  } else {
+    for (let i=0; i<spanDias; i++) {
+      const d = new Date(ini); d.setDate(d.getDate()+i);
+      porDia[kDia(d)] = 0;
+    }
   }
   fil.forEach(d => {
     const dt = d.criadoEm?.toDate?.();
     if (!dt) return;
-    const k = dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+    const k = porMes ? kMes(dt) : kDia(dt);
     if (porDia[k] !== undefined) porDia[k]++;
   });
+  const tPorDia = document.getElementById('tPorDia');
+  if (tPorDia) tPorDia.textContent = porMes ? '📅 Chamados por Mês' : '📅 Chamados por Dia';
   const ehDark=document.body.classList.contains('dark');
   const corLinha=ehDark?'#5b9bd5':'#1a3a5c';
   criarChart('cPorDia', {
@@ -1621,6 +1709,8 @@ window.atualizarRelatorio = function() {
 };
 
 window.exportarRelPDF = function() {
+  const preset = document.getElementById('rPeriodo').value;
+  if (preset !== 'custom') aplicarPreset(preset);
   const fil = getDadosFiltrados();
   const conc = fil.filter(d=>d.sit==='CONCLUIDO').length;
   const tx = fil.length ? ((conc/fil.length)*100).toFixed(0) : 0;
@@ -1640,7 +1730,7 @@ window.exportarRelPDF = function() {
   <style>body{font-family:Arial;font-size:12px;color:#222}h1{color:#1a3a5c;font-size:16px;margin-bottom:4px}h2{color:#1a3a5c;font-size:13px;margin:18px 0 8px;border-bottom:1px solid #ddd;padding-bottom:4px}.kpis{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}.kpi{border:1px solid #ddd;border-radius:6px;padding:10px 16px;min-width:130px}.kpi b{display:block;font-size:20px;color:#1a3a5c}.kpi span{font-size:11px;color:#777}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#1a3a5c;color:#fff;padding:5px}td{padding:4px 5px;border-bottom:1px solid #eee}</style>
   </head><body>
   <h1>📋 Relatório de Chamados T.I. — Norte Geradores</h1>
-  <p style="color:#888;font-size:11px">Gerado em: ${new Date().toLocaleString('pt-BR')} · Período: ${document.getElementById('rPeriodo').options[document.getElementById('rPeriodo').selectedIndex].text}</p>
+  <p style="color:#888;font-size:11px">Gerado em: ${new Date().toLocaleString('pt-BR')} · Período: ${textoPeriodo()}</p>
   <div class="kpis">
     <div class="kpi"><b>${fil.length}</b><span>Total</span></div>
     <div class="kpi"><b>${conc}</b><span>Concluídos (${tx}%)</span></div>
@@ -1668,6 +1758,7 @@ const manifest={name:'Painel Técnico T.I.',short_name:'TI Técnico',start_url:'
 const mLink=document.createElement('link');mLink.rel='manifest';mLink.href=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:'application/json'}));document.head.appendChild(mLink);
 
 renderCampos();
+aplicarPreset('mes'); // período padrão do relatório: 1º do mês atual até hoje
 </script>
 </body>
 </html>
