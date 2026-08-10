@@ -231,6 +231,13 @@ body.dark [style*="color:#7b1fa2"]{color:#c98ad8 !important}
 body.dark [style*="color:#1565c0"]{color:#5b9bd5 !important}
 body.dark [style*="color:#e65100"]{color:#ffa863 !important}
 body.dark [style*="color:#2e7d32"]{color:#7dcb82 !important}
+/* PONTOS (fechamento mensal) */
+#pjPausaBox{background:#fff8ef;border:1px solid #ffcc80;border-radius:8px;padding:10px}
+body.dark #pjPausaBox{background:#2b2114;border-color:#5a4526}
+.pt-sec{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:12px}
+.pt-sec h3{font-size:.84rem;color:var(--azul);margin-bottom:10px;font-weight:700}
+body.dark .pt-sec{background:#1a2535;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+body.dark [style*="color:#c62828"]{color:#ff7d7d !important}
 </style>
 </head>
 <body>
@@ -292,6 +299,7 @@ body.dark [style*="color:#2e7d32"]{color:#7dcb82 !important}
       <button id="vwKanban" class="btn btn-gray btn-sm" onclick="projView('kanban')">📌 Kanban</button>
       <button id="vwCal" class="btn btn-gray btn-sm" onclick="projView('cal')">📅 Calendário</button>
       <button id="vwDiario" class="btn btn-gray btn-sm" onclick="projView('diario')">📔 Diário</button>
+      <button id="vwPontos" class="btn btn-gray btn-sm" onclick="projView('pontos')">🏆 Pontos</button>
     </span>
   </div>
   <div class="campos-grid" id="projGrid"></div>
@@ -316,6 +324,7 @@ body.dark [style*="color:#2e7d32"]{color:#7dcb82 !important}
     </div>
     <div id="diarioLista"></div>
   </div>
+  <div id="projPontos" style="display:none;max-width:1100px"></div>
   <div id="projEmpty" class="empty" style="display:none">Nenhuma atividade ainda. Clique em "➕ Nova Atividade".</div>
 </div>
 
@@ -327,9 +336,33 @@ body.dark [style*="color:#2e7d32"]{color:#7dcb82 !important}
     <div class="form-row"><label>Título da atividade</label><input id="pjNome" placeholder="Ex.: Trocar o switch core da matriz"></div>
     <div class="form-row" style="display:flex;gap:8px">
       <div style="flex:1"><label>Status</label>
-        <select id="pjStatus"><option>Planejado</option><option>Em andamento</option><option>Pausado</option><option>Concluído</option></select>
+        <select id="pjStatus" onchange="onStatusChange()"><option>Planejado</option><option>Em andamento</option><option>Pausado</option><option>Concluído</option></select>
       </div>
-      <div style="flex:1"><label>Prazo</label><input type="date" id="pjPrazo"></div>
+      <div style="flex:1"><label>Data-limite <span style="color:var(--verm)">*</span></label><input type="date" id="pjPrazo"></div>
+    </div>
+    <div class="form-row">
+      <label>Porte (pontos de complexidade) <span style="color:var(--verm)">*</span></label>
+      <select id="pjPorte">
+        <option value="">— definir no planejamento —</option>
+        <option value="Pequeno">Pequeno — 1-2 subtarefas, até 1 semana (1 pt)</option>
+        <option value="Médio">Médio — 3-6 subtarefas, até 3 semanas (3 pts)</option>
+        <option value="Grande">Grande — 7+ subtarefas, mais de 1 mês (8 pts)</option>
+      </select>
+      <div id="pjPorteHint" style="font-size:.68rem;color:#888;margin-top:3px">Definido no planejamento — trava após a conclusão.</div>
+    </div>
+    <div class="form-row" style="display:flex;gap:8px">
+      <div style="flex:1"><label>Solicitante</label><input id="pjSolic" placeholder="Quem pediu a entrega"></div>
+      <div style="flex:1"><label>Aceite do solicitante</label>
+        <select id="pjAceite"><option>Pendente</option><option>Aceito</option><option>Recusado</option></select>
+      </div>
+    </div>
+    <div class="form-row" id="pjPausaBox" style="display:none">
+      <div style="display:flex;gap:8px">
+        <div style="flex:2"><label>Motivo da pausa <span style="color:var(--verm)">*</span></label><input id="pjPausaMotivo" placeholder="Ex.: aguardando peça do fornecedor"></div>
+        <div style="flex:1"><label>Classificação <span style="color:var(--verm)">*</span></label>
+          <select id="pjPausaTipo"><option value="">—</option><option>Bloqueio interno</option><option>Bloqueio externo</option></select>
+        </div>
+      </div>
     </div>
     <div class="form-row" style="display:flex;gap:8px">
       <div style="flex:1"><label>Responsável</label><select id="pjTecnico"></select></div>
@@ -699,7 +732,9 @@ window.goPage=function(p){
 
 // ============================ ATIVIDADES ============================
 const PROJ_STATUS=['Planejado','Em andamento','Pausado','Concluído'];
-let projCal=null, projViewMode='cards', subEdit=[];
+const PORTES={'Pequeno':1,'Médio':3,'Grande':8}; // pontos de complexidade — atribuídos no planejamento, nunca após a entrega
+let projCal=null, projViewMode='cards', subEdit=[], pontosMes=null;
+function pontosDe(a){return PORTES[a.porte]||0;}
 function projStatusColor(s){return {'Planejado':'#7b1fa2','Em andamento':'#1565c0','Pausado':'#e65100','Concluído':'#2e7d32'}[s]||'#777';}
 function prioColor(p){return {'Alta':'#e53935','Média':'#f9a825','Baixa':'#7cb342'}[p]||'#f9a825';}
 function fmtPrazo(s){if(!s)return'';const p=String(s).split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:s;}
@@ -741,6 +776,7 @@ window.renderAtividades=function(){
   if(projViewMode==='cal'&&projCal) projCal.refetchEvents();
   if(projViewMode==='kanban') renderKanban();
   if(projViewMode==='diario') renderDiario();
+  if(projViewMode==='pontos') renderPontos();
   atualizarBotaoMigrar();
 };
 
@@ -751,8 +787,9 @@ window.projView=function(v){
   document.getElementById('projCal').style.display=(v==='cal')?'block':'none';
   document.getElementById('projKanban').style.display=(v==='kanban')?'block':'none';
   document.getElementById('projDiario').style.display=(v==='diario')?'block':'none';
+  document.getElementById('projPontos').style.display=(v==='pontos')?'block':'none';
   const setBtn=(id,on)=>document.getElementById(id).className='btn btn-sm '+(on?'btn-blue':'btn-gray');
-  setBtn('vwCards',v==='cards');setBtn('vwKanban',v==='kanban');setBtn('vwCal',v==='cal');setBtn('vwDiario',v==='diario');
+  setBtn('vwCards',v==='cards');setBtn('vwKanban',v==='kanban');setBtn('vwCal',v==='cal');setBtn('vwDiario',v==='diario');setBtn('vwPontos',v==='pontos');
   if(v==='cal'){ initProjCal(); if(projCal){projCal.updateSize();projCal.refetchEvents();} }
   renderAtividades();
 };
@@ -800,6 +837,7 @@ function kbCard(a,cor){
       onclick="abrirAtividade('${a._id}')">
     <div class="t">${escP(a.titulo||'(sem título)')}</div>
     <div class="m">
+      ${a.porte?`<span>🏆 ${pontosDe(a)}pt${pontosDe(a)>1?'s':''}</span>`:''}
       ${a.responsavel?`<span>👤 ${escP(a.responsavel)}</span>`:''}
       ${a.prazo?`<span style="color:#e65100">📅 ${fmtPrazo(a.prazo)}</span>`:''}
       ${sub.length?`<span>✅ ${sf}/${sub.length}</span>`:''}
@@ -810,9 +848,99 @@ window.kbDrop=async function(ev,col){
   ev.preventDefault();col.classList.remove('drag-over');
   const id=ev.dataTransfer.getData('text/plain');const novo=col.getAttribute('data-status');
   if(!id||!novo||!db)return;
-  const a=atividades.find(x=>x._id===id);if(a&&a.status===novo)return;
-  try{await updateDoc(doc(db,'atividades',id),{status:novo,feito:novo==='Concluído',atualizadoEm:serverTimestamp()});showToast('📌 Movido para: '+novo);}
+  const a=atividades.find(x=>x._id===id);if(!a||a.status===novo)return;
+  if(novo==='Concluído'&&(!a.porte||!a.prazo)){showToast('⚠️ Defina porte e data-limite antes de concluir','#e65100');abrirAtividade(id);return;}
+  if(novo==='Pausado'){abrirAtividade(id);document.getElementById('pjStatus').value='Pausado';onStatusChange();showToast('⛔ Informe o motivo e a classificação da pausa','#e65100');return;}
+  try{await updateDoc(doc(db,'atividades',id),transicaoStatus(a,novo));showToast('📌 Movido para: '+novo);}
   catch(e){showToast('❌ Erro ao mover','#c62828');}
+};
+
+// PONTOS — fechamento mensal: pontos entregues, prazo, aceite e pausas por classificação
+window.setPontosMes=function(v){pontosMes=v;renderPontos();};
+window.renderPontos=function(){
+  const cont=document.getElementById('projPontos');if(!cont)return;
+  const mes=pontosMes||hojeStr().slice(0,7);
+  const ultimoDia=new Date(+mes.slice(0,4),+mes.slice(5,7),0).getDate();
+  const mIni=mes+'-01', mFim=mes+'-'+String(ultimoDia).padStart(2,'0');
+  const mesLabel=new Date(+mes.slice(0,4),+mes.slice(5,7)-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+
+  const concluidas=atividades.filter(a=>a.status==='Concluído'&&(a.concluidoEm||'').slice(0,7)===mes);
+  const ptsEntregues=concluidas.reduce((s,a)=>s+pontosDe(a),0);
+  const noPrazo=concluidas.filter(a=>a.prazo&&a.concluidoEm<=a.prazo).length;
+  const aceitas=concluidas.filter(a=>a.aceite==='Aceito').length;
+  const previstas=atividades.filter(a=>(a.prazo||'').slice(0,7)===mes&&a.status!=='Concluído');
+  const ptsPrevistos=previstas.reduce((s,a)=>s+pontosDe(a),0);
+  const semPorte=concluidas.filter(a=>!a.porte).length;
+
+  // Pausas que tocam o mês (dias contados só dentro do mês)
+  const pausasMes=[];
+  atividades.forEach(a=>(a.pausas||[]).forEach(p=>{
+    if(!p.inicio)return;
+    const fim=p.fim||hojeStr();
+    if(p.inicio<=mFim&&fim>=mIni)pausasMes.push({...p,fimCalc:fim,titulo:a.titulo||'',aberta:!p.fim});
+  }));
+  const diasPausa=p=>{
+    const s=p.inicio>mIni?p.inicio:mIni, e=p.fimCalc<mFim?p.fimCalc:mFim;
+    return Math.max(1,Math.round((new Date(e)-new Date(s))/86400000)+1);
+  };
+  const pInt=pausasMes.filter(p=>p.tipo==='Bloqueio interno');
+  const pExt=pausasMes.filter(p=>p.tipo==='Bloqueio externo');
+  const somaDias=arr=>arr.reduce((s,p)=>s+diasPausa(p),0);
+
+  const porResp={};
+  concluidas.forEach(a=>{
+    const r=a.responsavel||'— sem responsável —';
+    porResp[r]=porResp[r]||{n:0,pts:0,ok:0};
+    porResp[r].n++;porResp[r].pts+=pontosDe(a);
+    if(a.prazo&&a.concluidoEm<=a.prazo)porResp[r].ok++;
+  });
+
+  const pct=(x,t)=>t?Math.round(x*100/t)+'%':'—';
+  cont.innerHTML=`
+    <div class="toolbar">
+      <label style="font-size:.8rem;font-weight:700;color:#555">Mês do fechamento:</label>
+      <input type="month" value="${mes}" onchange="setPontosMes(this.value)" style="flex:0 0 auto;width:170px;min-width:0">
+      <span style="font-size:.73rem;color:#888">Pontuação atribuída no planejamento (Pequeno=1 · Médio=3 · Grande=8) — trava após a entrega.</span>
+    </div>
+    <div class="stats">
+      <div class="sc g"><div class="n">${ptsEntregues}</div><div class="l">Pontos entregues — ${escP(mesLabel)}</div></div>
+      <div class="sc"><div class="n">${concluidas.length}</div><div class="l">Atividades concluídas</div></div>
+      <div class="sc ${concluidas.length&&noPrazo===concluidas.length?'g':'o'}"><div class="n">${pct(noPrazo,concluidas.length)}</div><div class="l">No prazo (${noPrazo}/${concluidas.length})</div></div>
+      <div class="sc ${concluidas.length&&aceitas===concluidas.length?'g':'y'}"><div class="n">${aceitas}/${concluidas.length}</div><div class="l">Aceites confirmados</div></div>
+      <div class="sc"><div class="n">${ptsPrevistos}</div><div class="l">Pontos previstos (data-limite no mês)</div></div>
+      <div class="sc y"><div class="n">${pInt.length}</div><div class="l">Pausas bloqueio interno · ${somaDias(pInt)} dia(s)</div></div>
+      <div class="sc o"><div class="n">${pExt.length}</div><div class="l">Pausas bloqueio externo · ${somaDias(pExt)} dia(s)</div></div>
+    </div>
+    ${semPorte?`<div class="pt-sec" style="border-left:4px solid #c62828"><b style="color:#c62828">⚠️ ${semPorte} atividade(s) concluída(s) no mês sem porte definido</b> — não pontuam (a regra não permite atribuir pontos após a entrega).</div>`:''}
+    <div class="pt-sec">
+      <h3>👤 Pontos por responsável</h3>
+      ${Object.keys(porResp).length?`<div class="table-wrap"><table><thead><tr><th>Responsável</th><th>Concluídas</th><th>Pontos</th><th>No prazo</th></tr></thead><tbody>
+        ${Object.entries(porResp).sort((x,y)=>y[1].pts-x[1].pts).map(([r,v])=>`<tr><td>${escP(r)}</td><td>${v.n}</td><td><b>${v.pts}</b></td><td>${v.ok}/${v.n}</td></tr>`).join('')}
+      </tbody></table></div>`:'<div class="empty" style="padding:14px">Nenhuma atividade concluída neste mês.</div>'}
+    </div>
+    <div class="pt-sec">
+      <h3>✅ Entregas do mês</h3>
+      ${concluidas.length?`<div class="table-wrap"><table><thead><tr><th>Atividade</th><th>Porte</th><th>Pts</th><th>Data-limite</th><th>Concluída em</th><th>No prazo?</th><th>Solicitante</th><th>Aceite</th></tr></thead><tbody>
+        ${concluidas.map(a=>{
+          const ok=a.prazo&&a.concluidoEm<=a.prazo;
+          return `<tr>
+            <td>${escP(a.titulo||'')}</td>
+            <td>${escP(a.porte||'—')}</td>
+            <td><b>${pontosDe(a)||'—'}</b></td>
+            <td>${fmtPrazo(a.prazo)||'—'}</td>
+            <td>${fmtPrazo(a.concluidoEm)||'—'}</td>
+            <td style="font-weight:700;color:${ok?'var(--verde)':'#c62828'}">${ok?'Sim':'Não'}</td>
+            <td>${escP(a.solicitante||'—')}</td>
+            <td style="font-weight:700;color:${a.aceite==='Aceito'?'var(--verde)':(a.aceite==='Recusado'?'#c62828':'#e65100')}">${escP(a.aceite||'Pendente')}</td>
+          </tr>`;}).join('')}
+      </tbody></table></div>`:'<div class="empty" style="padding:14px">Nenhuma entrega neste mês.</div>'}
+    </div>
+    <div class="pt-sec">
+      <h3>⛔ Pausas no mês (bloqueios)</h3>
+      ${pausasMes.length?`<div class="table-wrap"><table><thead><tr><th>Atividade</th><th>Classificação</th><th>Motivo</th><th>Início</th><th>Fim</th><th>Dias no mês</th></tr></thead><tbody>
+        ${pausasMes.map(p=>`<tr><td>${escP(p.titulo)}</td><td>${escP(p.tipo||'—')}</td><td>${escP(p.motivo||'—')}</td><td>${fmtPrazo(p.inicio)}</td><td>${p.aberta?'<b style="color:#e65100">em aberto</b>':fmtPrazo(p.fim)}</td><td>${diasPausa(p)}</td></tr>`).join('')}
+      </tbody></table></div>`:'<div class="empty" style="padding:14px">Nenhuma pausa registrada neste mês.</div>'}
+    </div>`;
 };
 
 function cardAtividade(a){
@@ -828,11 +956,14 @@ function cardAtividade(a){
       <h3 style="flex:1;${concl?'text-decoration:line-through;opacity:.6':''}">${escP(a.titulo||'(sem título)')}</h3>
       <span class="badge" style="background:${cor}22;color:${cor}">${escP(a.status||'—')}</span>
     </div>
-    <div class="sub" style="display:flex;align-items:center;gap:5px">
+    <div class="sub" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
       <span class="prio-dot" style="background:${prioColor(prio)}"></span><span style="font-weight:600">${escP(prio)}</span>
+      ${a.porte?`<span>· 🏆 ${escP(a.porte)} (${pontosDe(a)} pt${pontosDe(a)>1?'s':''})</span>`:'<span style="color:#c62828;font-weight:600">· ⚠️ sem porte</span>'}
       <span>· 👤 ${escP(a.responsavel||'sem responsável')}</span>
     </div>
-    ${a.prazo?`<div class="sub" style="color:#e65100;font-weight:600">📅 ${fmtPrazo(a.prazo)}</div>`:''}
+    ${a.prazo?`<div class="sub" style="color:${(!concl&&a.prazo<hojeStr())?'#c62828':'#e65100'};font-weight:600">📅 ${fmtPrazo(a.prazo)}${(!concl&&a.prazo<hojeStr())?' · EM ATRASO':''}</div>`:'<div class="sub" style="color:#c62828;font-weight:600">⚠️ sem data-limite</div>'}
+    ${concl?`<div class="sub" style="font-weight:600;color:${a.aceite==='Aceito'?'var(--verde)':(a.aceite==='Recusado'?'#c62828':'#e65100')}">🤝 Aceite: ${escP(a.aceite||'Pendente')}</div>`:''}
+    ${a.status==='Pausado'&&a.pausaTipo?`<div class="sub" style="color:#e65100;font-weight:600">⛔ ${escP(a.pausaTipo)}${a.pausaMotivo?': '+escP(a.pausaMotivo):''}</div>`:''}
     ${a.info?`<div style="font-size:.78rem;color:#555;margin:4px 0 6px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap">${escP(a.info)}</div>`:''}
     <div class="cc-actions">
       <span style="font-size:.72rem;color:#888;flex:1">${sub.length?`✅ ${subFeito}/${sub.length} · `:''}📝 ${obs}</span>
@@ -842,10 +973,23 @@ function cardAtividade(a){
   el.querySelector('button').onclick=()=>abrirAtividade(a._id);
   return el;
 }
+// Monta o update de uma troca de status: fecha pausa aberta e marca/limpa a data de conclusão
+function transicaoStatus(a,novo){
+  const upd={status:novo,feito:novo==='Concluído',atualizadoEm:serverTimestamp()};
+  if(a.status==='Pausado'&&novo!=='Pausado'){
+    const pausas=Array.isArray(a.pausas)?a.pausas.map(p=>({...p})):[];
+    const aberta=pausas.find(p=>!p.fim);if(aberta)aberta.fim=hojeStr();
+    upd.pausas=pausas;upd.pausaMotivo='';upd.pausaTipo='';
+  }
+  if(novo==='Concluído'&&a.status!=='Concluído')upd.concluidoEm=hojeStr();
+  if(novo!=='Concluído'&&a.status==='Concluído')upd.concluidoEm='';
+  return upd;
+}
 window.toggleConcluido=async function(id){
   const a=atividades.find(x=>x._id===id);if(!a||!db)return;
   const novo=a.status==='Concluído'?'Em andamento':'Concluído';
-  try{await updateDoc(doc(db,'atividades',id),{status:novo,feito:novo==='Concluído',atualizadoEm:serverTimestamp()});}
+  if(novo==='Concluído'&&(!a.porte||!a.prazo)){showToast('⚠️ Defina porte e data-limite antes de concluir','#e65100');abrirAtividade(id);return;}
+  try{await updateDoc(doc(db,'atividades',id),transicaoStatus(a,novo));}
   catch(e){showToast('❌ Erro','#c62828');}
 };
 
@@ -912,18 +1056,31 @@ window.abrirAtividade=function(id){
     document.getElementById('pjPrio').value=a.prioridade||'Média';
     document.getElementById('pjInfo').value=a.info||'';
     document.getElementById('pjPrazo').value=a.prazo||'';
+    document.getElementById('pjPorte').value=a.porte||'';
+    document.getElementById('pjPorte').disabled=(a.status==='Concluído');
+    document.getElementById('pjPorteHint').textContent=(a.status==='Concluído')?'🔒 Concluída — pontos não podem ser alterados após a entrega.':'Definido no planejamento — trava após a conclusão.';
+    document.getElementById('pjSolic').value=a.solicitante||'';
+    document.getElementById('pjAceite').value=a.aceite||'Pendente';
+    document.getElementById('pjPausaMotivo').value=a.pausaMotivo||'';
+    document.getElementById('pjPausaTipo').value=a.pausaTipo||'';
     document.getElementById('pjBtnExcluir').style.display='inline-block';
     renderObs(a.observacoes||[]);subEdit=(a.subtarefas||[]).slice();
   }else{
     projAtual=null;
     document.getElementById('mProjTitulo').textContent='✅ Nova Atividade';
-    ['pjId','pjNome','pjInfo','pjPrazo'].forEach(i=>document.getElementById(i).value='');
-    document.getElementById('pjStatus').value='Em andamento';
+    ['pjId','pjNome','pjInfo','pjPrazo','pjSolic','pjPausaMotivo'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('pjStatus').value='Planejado';
     document.getElementById('pjTecnico').value='';
     document.getElementById('pjPrio').value='Média';
+    document.getElementById('pjPorte').value='';
+    document.getElementById('pjPorte').disabled=false;
+    document.getElementById('pjPorteHint').textContent='Definido no planejamento — trava após a conclusão.';
+    document.getElementById('pjAceite').value='Pendente';
+    document.getElementById('pjPausaTipo').value='';
     document.getElementById('pjBtnExcluir').style.display='none';
     renderObs([]);subEdit=[];
   }
+  onStatusChange();
   document.getElementById('pjObsTexto').value='';
   document.getElementById('pjAtvTexto').value='';renderSub(subEdit);
   const la=localStorage.getItem('proj-autor');if(la)document.getElementById('pjObsAutor').value=la;
@@ -931,11 +1088,27 @@ window.abrirAtividade=function(id){
 };
 window.fecharProj=function(){document.getElementById('mProjBg').classList.remove('open');projAtual=null;};
 
+window.onStatusChange=function(){
+  document.getElementById('pjPausaBox').style.display=(document.getElementById('pjStatus').value==='Pausado')?'block':'none';
+};
+
 window.salvarAtividade=async function(){
   if(!db){showToast('❌ Firebase não conectado','#c62828');return;}
   const titulo=document.getElementById('pjNome').value.trim();
   if(!titulo){showToast('⚠️ Informe o título da atividade','#e65100');return;}
   const status=document.getElementById('pjStatus').value;
+  const prazo=document.getElementById('pjPrazo').value;
+  const id=document.getElementById('pjId').value;
+  const prev=id?atividades.find(x=>x._id===id):null;
+  const jaConcluida=!!(prev&&prev.status==='Concluído');
+  // Regras do fechamento: data-limite e porte obrigatórios; porte nunca muda após a entrega
+  if(!prazo&&!jaConcluida){showToast('⚠️ Data-limite é obrigatória','#e65100');return;}
+  const porte=jaConcluida?(prev.porte||''):document.getElementById('pjPorte').value;
+  if(!porte&&!jaConcluida){showToast('⚠️ Defina o porte (pontos) no planejamento','#e65100');return;}
+  const pausaMotivo=document.getElementById('pjPausaMotivo').value.trim();
+  const pausaTipo=document.getElementById('pjPausaTipo').value;
+  if(status==='Pausado'&&(!pausaMotivo||!pausaTipo)){showToast('⚠️ Informe motivo e classificação da pausa','#e65100');onStatusChange();return;}
+  const aceite=document.getElementById('pjAceite').value||'Pendente';
   const data={
     titulo,
     status,
@@ -943,11 +1116,33 @@ window.salvarAtividade=async function(){
     responsavel:document.getElementById('pjTecnico').value,
     prioridade:document.getElementById('pjPrio').value,
     info:document.getElementById('pjInfo').value.trim(),
-    prazo:document.getElementById('pjPrazo').value||'',
+    prazo:prazo||(prev&&prev.prazo)||'',
+    porte,
+    pontos:PORTES[porte]||0,
+    solicitante:document.getElementById('pjSolic').value.trim(),
+    aceite,
     atualizadoEm:serverTimestamp()
   };
+  // Log de pausas — alimenta o fechamento mensal por classificação
+  const pausas=(prev&&Array.isArray(prev.pausas))?prev.pausas.map(p=>({...p})):[];
+  const estavaPausada=!!(prev&&prev.status==='Pausado');
+  if(status==='Pausado'){
+    const aberta=pausas.find(p=>!p.fim);
+    if(aberta){aberta.motivo=pausaMotivo;aberta.tipo=pausaTipo;}
+    else pausas.push({motivo:pausaMotivo,tipo:pausaTipo,inicio:hojeStr(),fim:''});
+    data.pausaMotivo=pausaMotivo;data.pausaTipo=pausaTipo;
+  }else{
+    if(estavaPausada){const aberta=pausas.find(p=>!p.fim);if(aberta)aberta.fim=hojeStr();}
+    data.pausaMotivo='';data.pausaTipo='';
+  }
+  data.pausas=pausas;
+  // Datas de conclusão, aceite e definição do porte
+  if(status==='Concluído')data.concluidoEm=jaConcluida?(prev.concluidoEm||hojeStr()):hojeStr();
+  else data.concluidoEm='';
+  if(aceite==='Aceito')data.aceiteEm=(prev&&prev.aceiteEm)||hojeStr();
+  else data.aceiteEm='';
+  if(porte&&!(prev&&prev.porteDefinidoEm))data.porteDefinidoEm=hojeStr();
   try{
-    const id=document.getElementById('pjId').value;
     if(id){await updateDoc(doc(db,'atividades',id),data);}
     else{data.subtarefas=[];data.observacoes=[];data.criadoEm=serverTimestamp();await addDoc(collection(db,'atividades'),data);}
     showToast('💾 Atividade salva!');fecharProj();
