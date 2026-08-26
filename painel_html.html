@@ -348,7 +348,7 @@ body.dark [style*="color:#c62828"]{color:#ff7d7d !important}
         <option value="Médio">Médio — 3-6 subtarefas, até 3 semanas (3 pts)</option>
         <option value="Grande">Grande — 7+ subtarefas, mais de 1 mês (8 pts)</option>
       </select>
-      <div id="pjPorteHint" style="font-size:.68rem;color:#888;margin-top:3px">Definido no planejamento — trava após a conclusão.</div>
+      <div id="pjPorteHint" style="font-size:.68rem;color:#888;margin-top:3px">Automático pela quantidade de subtarefas (1-2 Pequeno · 3-6 Médio · 7+ Grande). Sem subtarefas, defina à mão.</div>
     </div>
     <div class="form-row" style="display:flex;gap:8px">
       <div style="flex:1"><label>Solicitante</label><input id="pjSolic" placeholder="Quem pediu a entrega"></div>
@@ -732,7 +732,11 @@ window.goPage=function(p){
 
 // ============================ ATIVIDADES ============================
 const PROJ_STATUS=['Planejado','Em andamento','Pausado','Concluído'];
-const PORTES={'Pequeno':1,'Médio':3,'Grande':8}; // pontos de complexidade — atribuídos no planejamento, nunca após a entrega
+const PORTES={'Pequeno':1,'Médio':3,'Grande':8}; // pontos de complexidade
+// Porte AUTOMÁTICO pela quantidade de subtarefas: 1-2 Pequeno · 3-6 Médio · 7+ Grande. Sem subtarefas, vale o escolhido à mão.
+function porteAuto(n){return n>=7?'Grande':n>=3?'Médio':n>=1?'Pequeno':'';}
+function porteHintTexto(n){return n>0?`⚙️ Automático: ${n} subtarefa${n>1?'s':''} → ${porteAuto(n)} (${PORTES[porteAuto(n)]} pt${PORTES[porteAuto(n)]>1?'s':''})`:'Sem subtarefas: defina à mão — vira automático ao adicionar subtarefas (1-2 Pequeno · 3-6 Médio · 7+ Grande).';}
+function aplicarPorteNoModal(n){const sel=document.getElementById('pjPorte');const h=document.getElementById('pjPorteHint');if(!sel||!h)return;if(n>0)sel.value=porteAuto(n);sel.disabled=n>0;h.textContent=porteHintTexto(n);}
 let projCal=null, projViewMode='cards', subEdit=[], pontosMes=null;
 function pontosDe(a){return PORTES[a.porte]||0;}
 function projStatusColor(s){return {'Planejado':'#7b1fa2','Em andamento':'#1565c0','Pausado':'#e65100','Concluído':'#2e7d32'}[s]||'#777';}
@@ -911,7 +915,7 @@ window.renderPontos=function(){
       <div class="sc y"><div class="n">${pInt.length}</div><div class="l">Pausas bloqueio interno · ${somaDias(pInt)} dia(s)</div></div>
       <div class="sc o"><div class="n">${pExt.length}</div><div class="l">Pausas bloqueio externo · ${somaDias(pExt)} dia(s)</div></div>
     </div>
-    ${semPorte?`<div class="pt-sec" style="border-left:4px solid #c62828"><b style="color:#c62828">⚠️ ${semPorte} atividade(s) concluída(s) no mês sem porte definido</b> — não pontuam (a regra não permite atribuir pontos após a entrega).</div>`:''}
+    ${semPorte?`<div class="pt-sec" style="border-left:4px solid #c62828"><b style="color:#c62828">⚠️ ${semPorte} atividade(s) concluída(s) no mês sem porte definido</b> — não pontuam. Abra a atividade e adicione as subtarefas (o porte é automático) ou defina o porte à mão.</div>`:''}
     <div class="pt-sec">
       <h3>👤 Pontos por responsável</h3>
       ${Object.keys(porResp).length?`<div class="table-wrap"><table><thead><tr><th>Responsável</th><th>Concluídas</th><th>Pontos</th><th>No prazo</th></tr></thead><tbody>
@@ -1021,7 +1025,16 @@ function renderSub(arr){
 }
 function persistSub(){
   if(!projAtual||!db)return Promise.resolve();
-  return updateDoc(doc(db,'atividades',projAtual),{subtarefas:subEdit,atualizadoEm:serverTimestamp()});
+  const upd={subtarefas:subEdit,atualizadoEm:serverTimestamp()};
+  // Porte automático: muda junto com a quantidade de subtarefas (inclusive nas concluídas)
+  const a=atividades.find(x=>x._id===projAtual);
+  const novo=porteAuto(subEdit.length);
+  if(novo&&a&&a.porte!==novo){
+    upd.porte=novo;upd.pontos=PORTES[novo];upd.porteDefinidoEm=hojeStr();
+    showToast(`🏆 Porte ajustado para ${novo} (${PORTES[novo]} pt${PORTES[novo]>1?'s':''}) — ${subEdit.length} subtarefas`,'#1565c0');
+  }
+  aplicarPorteNoModal(subEdit.length);
+  return updateDoc(doc(db,'atividades',projAtual),upd);
 }
 window.addSubtarefa=async function(){
   const t=document.getElementById('pjAtvTexto').value.trim();
@@ -1057,8 +1070,7 @@ window.abrirAtividade=function(id){
     document.getElementById('pjInfo').value=a.info||'';
     document.getElementById('pjPrazo').value=a.prazo||'';
     document.getElementById('pjPorte').value=a.porte||'';
-    document.getElementById('pjPorte').disabled=(a.status==='Concluído');
-    document.getElementById('pjPorteHint').textContent=(a.status==='Concluído')?'🔒 Concluída — pontos não podem ser alterados após a entrega.':'Definido no planejamento — trava após a conclusão.';
+    aplicarPorteNoModal((a.subtarefas||[]).length);
     document.getElementById('pjSolic').value=a.solicitante||'';
     document.getElementById('pjAceite').value=a.aceite||'Pendente';
     document.getElementById('pjPausaMotivo').value=a.pausaMotivo||'';
@@ -1073,8 +1085,7 @@ window.abrirAtividade=function(id){
     document.getElementById('pjTecnico').value='';
     document.getElementById('pjPrio').value='Média';
     document.getElementById('pjPorte').value='';
-    document.getElementById('pjPorte').disabled=false;
-    document.getElementById('pjPorteHint').textContent='Definido no planejamento — trava após a conclusão.';
+    aplicarPorteNoModal(0);
     document.getElementById('pjAceite').value='Pendente';
     document.getElementById('pjPausaTipo').value='';
     document.getElementById('pjBtnExcluir').style.display='none';
@@ -1101,10 +1112,11 @@ window.salvarAtividade=async function(){
   const id=document.getElementById('pjId').value;
   const prev=id?atividades.find(x=>x._id===id):null;
   const jaConcluida=!!(prev&&prev.status==='Concluído');
-  // Regras do fechamento: data-limite e porte obrigatórios; porte nunca muda após a entrega
+  // Regras do fechamento: data-limite e porte obrigatórios; porte é automático pela quantidade de subtarefas
   if(!prazo&&!jaConcluida){showToast('⚠️ Data-limite é obrigatória','#e65100');return;}
-  const porte=jaConcluida?(prev.porte||''):document.getElementById('pjPorte').value;
-  if(!porte&&!jaConcluida){showToast('⚠️ Defina o porte (pontos) no planejamento','#e65100');return;}
+  const nSub=prev?(prev.subtarefas||[]).length:0;
+  const porte=nSub>0?porteAuto(nSub):document.getElementById('pjPorte').value;
+  if(!porte&&!jaConcluida){showToast('⚠️ Defina o porte (pontos) ou adicione subtarefas','#e65100');return;}
   const pausaMotivo=document.getElementById('pjPausaMotivo').value.trim();
   const pausaTipo=document.getElementById('pjPausaTipo').value;
   if(status==='Pausado'&&(!pausaMotivo||!pausaTipo)){showToast('⚠️ Informe motivo e classificação da pausa','#e65100');onStatusChange();return;}
@@ -1141,7 +1153,7 @@ window.salvarAtividade=async function(){
   else data.concluidoEm='';
   if(aceite==='Aceito')data.aceiteEm=(prev&&prev.aceiteEm)||hojeStr();
   else data.aceiteEm='';
-  if(porte&&!(prev&&prev.porteDefinidoEm))data.porteDefinidoEm=hojeStr();
+  if(porte&&(!(prev&&prev.porteDefinidoEm)||(prev&&prev.porte!==porte)))data.porteDefinidoEm=hojeStr();
   try{
     if(id){await updateDoc(doc(db,'atividades',id),data);}
     else{data.subtarefas=[];data.observacoes=[];data.criadoEm=serverTimestamp();await addDoc(collection(db,'atividades'),data);}
