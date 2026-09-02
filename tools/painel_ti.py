@@ -43,10 +43,11 @@ COMMIT = f"https://firestore.googleapis.com/v1/projects/{PROJECT}/databases/(def
 RESPONSAVEL_PADRAO = "DAVID"
 PORTES = {"Pequeno": 1, "Médio": 3, "Grande": 8}
 
-# Banco de memória do Ruflo (iniciado na home em 02/09/2026: um só pra todos os projetos)
+# Banco de memória do Ruflo: o do laboratório (o Ruflo global foi cancelado em 02/09/2026 por lentidão).
+# Só espelha se esse arquivo existir; nunca cria .swarm/ fora dele.
 RUFLO_DB = os.environ.get(
     "CLAUDE_FLOW_DB_PATH",
-    os.path.join(os.path.expanduser("~"), ".swarm", "memory.db"),
+    os.path.join(os.path.expanduser("~"), "ruflo-lab", ".swarm", "memory.db"),
 )
 
 # nome de repo / apelido  ->  título exato da atividade no painel
