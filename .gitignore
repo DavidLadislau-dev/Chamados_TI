@@ -1,0 +1,4 @@
+# bancos que o ruflo cria no cwd quando o painel_ti.py espelha a memória
+ruvector.db
+.swarm/
+__pycache__/

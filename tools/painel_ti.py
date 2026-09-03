@@ -58,6 +58,7 @@ ALIASES = {
     "chamados_ti": "Chamados T.I", "chamados ti": "Chamados T.I", "painel ti": "Chamados T.I", "painel de ti": "Chamados T.I",
     "juridico-norte": "Acompanhamento de Processos Judiciais", "juridico": "Acompanhamento de Processos Judiciais", "painel juridico": "Acompanhamento de Processos Judiciais",
     "zpro": "Zpro - Migração", "z-pro": "Zpro - Migração", "sdr chatflow": "Zpro - Migração",
+    "central-bots-norte": "Central de Bots (zPro)", "central bots": "Central de Bots (zPro)", "central de bots": "Central de Bots (zPro)",
     "campanhas-email": "Email Marketing", "campanhas email": "Email Marketing", "email marketing": "Email Marketing",
     "bi-manutencao": "BI de Manutenção", "bi manutencao": "BI de Manutenção",
     "tally-ng": "Tally NG", "tally": "Tally NG", "contagem": "Tally NG",
@@ -87,6 +88,11 @@ def _norm(s: str) -> str:
     s = "".join(c for c in s if not unicodedata.combining(c)).lower()
     s = s.replace("_", " ").replace("-", " ")
     return re.sub(r"\s+", " ", s).strip()
+
+
+# As chaves dos ALIASES passam pela mesma normalização da busca (hífen/underscore viram espaço);
+# sem isso, apelidos como "juridico-norte" ou "central-bots-norte" nunca casavam.
+ALIASES = {_norm(k): v for k, v in ALIASES.items()}
 
 
 def _slug(s: str) -> str:
@@ -333,10 +339,12 @@ def _espelhar_ruflo(titulo: str, texto: str):
     ns = _slug(titulo)
     key = "sub-" + _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     flags = 0x08000000 if os.name == "nt" else 0  # CREATE_NO_WINDOW
+    # roda dentro do ruflo-lab: o ruflo grava um ruvector.db no cwd, mesmo com CLAUDE_FLOW_DB_PATH
+    cwd = os.path.dirname(os.path.dirname(RUFLO_DB)) if os.path.exists(RUFLO_DB) else None
     try:
         r = subprocess.run(
             [exe, "memory", "store", "-n", ns, "-k", key, "-v", f"[{hoje_str()}] {texto}"],
-            env=env, capture_output=True, text=True, timeout=90, creationflags=flags,
+            env=env, cwd=cwd, capture_output=True, text=True, timeout=90, creationflags=flags,
         )
         if r.returncode == 0 and "stored" in (r.stdout + r.stderr).lower():
             print(f"🧠 Espelhado na memória do Ruflo (namespace {ns}).")
