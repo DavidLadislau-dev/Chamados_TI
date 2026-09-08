@@ -236,6 +236,20 @@ body.dark [style*="color:#2e7d32"]{color:#7dcb82 !important}
 body.dark #pjPausaBox{background:#2b2114;border-color:#5a4526}
 .pt-sec{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:12px}
 .pt-sec h3{font-size:.84rem;color:var(--azul);margin-bottom:10px;font-weight:700}
+/* SOLICITAÇÕES (pedidos de projeto/melhoria feitos no app de chamados) */
+.sol-item{border:1px solid #e3e8ee;border-left:4px solid #1565c0;border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fff}
+.sol-item.novo{border-left-color:#7b1fa2}
+.sol-item.done{opacity:.75}
+.sol-item .t{font-weight:700;font-size:.86rem;color:#222}
+.sol-item .m{font-size:.72rem;color:#888;margin:3px 0 4px;display:flex;flex-wrap:wrap;gap:8px}
+.sol-item p{font-size:.8rem;color:#333;white-space:pre-wrap;line-height:1.45;margin:2px 0}
+.sol-item .lbl{font-size:.66rem;font-weight:700;color:#888;text-transform:uppercase;margin-top:6px}
+.sol-item .acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.sol-item .acts input{flex:1;min-width:160px;padding:6px 9px;border:1px solid #ccc;border-radius:6px;font-size:.78rem}
+body.dark .sol-item{background:#22344a;border-color:#33425e;color:#d8dde3}
+body.dark .sol-item .t{color:#d8dde3}
+body.dark .sol-item p{color:#c5ccd6}
+body.dark .sol-item .acts input{background:#0f1721;color:#d8dde3;border-color:#33425e}
 body.dark .pt-sec{background:#1a2535;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 body.dark [style*="color:#c62828"]{color:#ff7d7d !important}
 </style>
@@ -250,7 +264,7 @@ body.dark [style*="color:#c62828"]{color:#ff7d7d !important}
 <nav>
   <button class="nav-btn active" onclick="goPage('dashboard')">📊 Dashboard</button>
   <button class="nav-btn" onclick="goPage('lista')">📋 Chamados <span class="novo-badge" id="novoBadge"></span></button>
-  <button class="nav-btn" onclick="goPage('atividades')">✅ Atividades</button>
+  <button class="nav-btn" onclick="goPage('atividades')">✅ Atividades <span class="novo-badge" id="solicNavBadge" title="Solicitações pendentes"></span></button>
   <button class="nav-btn" onclick="goPage('campos')">⚙️ Campos</button>
   <button class="nav-btn" onclick="goPage('relatorios')">📈 Relatórios</button>
   <button class="nav-btn" onclick="goPage('exportar')">📄 Exportar</button>
@@ -293,6 +307,7 @@ body.dark [style*="color:#c62828"]{color:#ff7d7d !important}
       <option value="">Todas prioridades</option><option>Alta</option><option>Média</option><option>Baixa</option>
     </select>
     <button class="btn btn-blue" onclick="abrirAtividade()">➕ Nova Atividade</button>
+    <button id="btnSolic" class="btn btn-gray" onclick="abrirSolicitacoes()" title="Pedidos de projeto/melhoria feitos pelos colaboradores no app">📨 Solicitações<span class="msg-badge" id="solicBadge" style="display:none">0</span></button>
     <button id="btnMigrar" class="btn btn-gray btn-sm" onclick="migrarProjetos()" style="display:none"></button>
     <span style="margin-left:auto;display:inline-flex;gap:4px">
       <button id="vwCards" class="btn btn-blue btn-sm" onclick="projView('cards')">🗂️ Cards</button>
@@ -351,7 +366,8 @@ body.dark [style*="color:#c62828"]{color:#ff7d7d !important}
       <div id="pjPorteHint" style="font-size:.68rem;color:#888;margin-top:3px">Automático pela quantidade de subtarefas (1-2 Pequeno · 3-6 Médio · 7+ Grande). Sem subtarefas, defina à mão.</div>
     </div>
     <div class="form-row" style="display:flex;gap:8px">
-      <div style="flex:1"><label>Solicitante</label><input id="pjSolic" placeholder="Quem pediu a entrega"></div>
+      <div style="flex:1"><label>Solicitante</label><select id="pjSolic"></select>
+        <div style="font-size:.66rem;color:#888;margin-top:3px">Mesmo nome do app de chamados — a pessoa vê o projeto na aba 📁 Projetos.</div></div>
       <div style="flex:1"><label>Aceite do solicitante</label>
         <select id="pjAceite"><option>Pendente</option><option>Aceito</option><option>Recusado</option></select>
       </div>
@@ -518,6 +534,21 @@ body.dark [style*="color:#c62828"]{color:#ff7d7d !important}
 </div>
 
 <!-- MODAL DETALHE/STATUS -->
+<!-- MODAL SOLICITAÇÕES (pedidos de projeto novo / melhoria vindos da aba Projetos do app de chamados) -->
+<div class="modal-bg" id="mSolicBg" onclick="if(event.target===this)fecharSolicitacoes()">
+  <div class="modal" style="max-width:660px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <h3 style="margin:0;flex:1">📨 Solicitações dos colaboradores</h3>
+      <select id="solFiltro" onchange="renderSolicitacoes()" style="padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:.78rem">
+        <option value="Pendente">Pendentes</option><option value="">Todas</option><option value="Aceita">Aceitas</option><option value="Recusada">Recusadas</option>
+      </select>
+      <button class="btn btn-gray btn-sm" onclick="fecharSolicitacoes()">✕</button>
+    </div>
+    <div style="font-size:.72rem;color:#888;margin-bottom:10px">Pedidos feitos na aba <b>📁 Projetos</b> do app de chamados. Aceitar um <b>novo projeto</b> abre a Nova Atividade já preenchida; aceitar uma <b>melhoria</b> vira subtarefa (e observação) da atividade.</div>
+    <div id="solLista"></div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modalBg" onclick="if(event.target===this)fecharModal()">
   <div class="modal">
     <h3 id="mTit"></h3>
@@ -592,6 +623,7 @@ const firebaseConfig = {
 
 let dados=[], pag=1, POR_PAG=15, modalDocId=null, db=null, chatUnsub=null;
 let atividades=[], projAtual=null, projetosLegado=[], diario=[];
+let solicitacoes=[], solicVinculo=null, solicPrimeiraVez=true; // pedidos de projeto/melhoria do app de chamados
 let campos = [
   {id:'nome',label:'Nome / Identificação',type:'select',required:true,locked:true,
    options:['ALEX CASTELO','AMANDA FAVACHO','AMANDA PIEDADE','ANA PAULA','ANDREIA DAMASCENO','BIANCA NORONHA','BRUNA COSTA','BRUNO CAVALCANTE','CAMILA DONATO','CARLOS COSTA','CLAUDETE CONCEIÇÃO','CLEIDE AMANAJÁS','DANIELLE ROSA','DAVID JESUS','DAYANE ALMEIDA','DÉBORA BORGES','EDILSON JUNIOR','EDSON DUARTE','FRANCY BRITO','GEORGINA ULIANA','GIOVANNI CUNHA','GIRLEIDE SILVA','GUSTAVO SUP.TECNICO','HUATILA RODRIGUES','ICARO SANTOS','INGREDY SILVA','ISAIAS MALCHER','IZABELA FERREIRA','JAMILY CRUZ','JOYSE SENA','JOZIANA ROSARIO','JULIANA AROUCA','KAREN RESENDE','KELLY PASSOS','LABELLE PEREIRA','LETICIA ESCAMILLA','LUCIENE RODRIGUES','MARCUS ARAUJO','MARCOS DA SILVA','MARCOS SENA','MARIANA FRAZÃO','NAIANE SODRE','NATAN RIBEIRO','ORLANDO LIMA','PAMELA MIRANDA','RAIMUNDA BARBÁRA','RAYLENE LOBATO','ROBERTO NASCIMENTO','SIMONE SANTOS','SOCORRO AFONSO','SUELLEN MAXIMIANO','TAINÁ CASTRO','TAYNARA ARCANJO','TIAGO NASCIMENTO','VALERIA SOUZA','WARLEN','MALU MATOS']},
@@ -695,6 +727,22 @@ try {
     diario=snap.docs.map(d=>({_id:d.id,...d.data()}));
     if(document.getElementById('page-atividades').classList.contains('active')&&projViewMode==='diario') renderDiario();
   }, err=>console.warn('diario snapshot',err));
+  // Listener tempo real das solicitações (pedidos de projeto/melhoria feitos no app de chamados)
+  onSnapshot(query(collection(db,'solicitacoes'),orderBy('criadoEm','desc')), snap=>{
+    const novos=snap.docs.map(d=>({_id:d.id,...d.data()}));
+    if(!solicPrimeiraVez){
+      const antes=new Set(solicitacoes.map(x=>x._id));
+      const chegaram=novos.filter(x=>!antes.has(x._id)&&(x.status||'Pendente')==='Pendente');
+      if(chegaram.length){
+        showToast(`📨 ${chegaram.length} nova(s) solicitação(ões) de projeto/melhoria`,'#1565c0');
+        if(Notification.permission==='granted') new Notification('Nova solicitação de projeto',{body:chegaram.map(x=>`${x.solicitante||''}: ${x.titulo||''}`).join('\n'),tag:'solic'});
+      }
+    }
+    solicitacoes=novos;solicPrimeiraVez=false;
+    atualizarBadgeSolic();
+    if(document.getElementById('mSolicBg').classList.contains('open')) renderSolicitacoes();
+    if(document.getElementById('page-atividades').classList.contains('active')&&projViewMode==='cards') renderAtividades();
+  }, err=>console.warn('solicitacoes snapshot',err));
   // Projetos legados — só para oferecer a migração 1x (coleção preservada como backup)
   onSnapshot(collection(db,'projetos'), snap=>{
     projetosLegado=snap.docs.map(d=>({_id:d.id,...d.data()}));
@@ -744,6 +792,16 @@ function prioColor(p){return {'Alta':'#e53935','Média':'#f9a825','Baixa':'#7cb3
 function fmtPrazo(s){if(!s)return'';const p=String(s).split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:s;}
 function escP(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function ipHref(ip){ip=(ip||'').trim();if(!ip)return '';return /^https?:\/\//i.test(ip)?ip:('http://'+ip);}
+function colaboradoresList(){const c=campos.find(x=>x.id==='nome');return (c&&c.options)||[];}
+// Solicitante = nome canônico da lista de colaboradores (é a chave que liga a atividade à aba Projetos do index)
+function preencherSolicSelect(val){
+  const s=document.getElementById('pjSolic');if(!s)return;
+  const lista=colaboradoresList().slice().sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const v=val||'';
+  const extra=(v&&!lista.includes(v))?`<option value="${escP(v)}">${escP(v)} (fora da lista)</option>`:'';
+  s.innerHTML='<option value="">— sem solicitante —</option>'+extra+lista.map(n=>`<option value="${escP(n)}">${escP(n)}</option>`).join('');
+  s.value=v;
+}
 function tecnicosList(){const c=campos.find(c=>c.id==='sol');return (c&&Array.isArray(c.options))?c.options:[];}
 function preencherTecSelect(id,tecs,comTodos){
   const s=document.getElementById(id);if(!s)return;const cur=s.value;
@@ -881,7 +939,7 @@ window.renderPontos=function(){
   atividades.forEach(a=>(a.pausas||[]).forEach(p=>{
     if(!p.inicio)return;
     const fim=p.fim||hojeStr();
-    if(p.inicio<=mFim&&fim>=mIni)pausasMes.push({...p,fimCalc:fim,titulo:a.titulo||'',aberta:!p.fim});
+    if(p.inicio<=mFim&&fim>=mIni)pausasMes.push({...p,fimCalc:fim,titulo:a.titulo||'',responsavel:a.responsavel||'',aberta:!p.fim});
   }));
   const diasPausa=p=>{
     const s=p.inicio>mIni?p.inicio:mIni, e=p.fimCalc<mFim?p.fimCalc:mFim;
@@ -904,7 +962,7 @@ window.renderPontos=function(){
     <div class="toolbar">
       <label style="font-size:.8rem;font-weight:700;color:#555">Mês do fechamento:</label>
       <input type="month" value="${mes}" onchange="setPontosMes(this.value)" style="flex:0 0 auto;width:170px;min-width:0">
-      <span style="font-size:.73rem;color:#888">Pontuação atribuída no planejamento (Pequeno=1 · Médio=3 · Grande=8) — trava após a entrega.</span>
+      <span style="font-size:.73rem;color:#888">Porte automático pela quantidade de subtarefas (Pequeno=1 · Médio=3 · Grande=8 pts).</span>
     </div>
     <div class="stats">
       <div class="sc g"><div class="n">${ptsEntregues}</div><div class="l">Pontos entregues — ${escP(mesLabel)}</div></div>
@@ -924,11 +982,12 @@ window.renderPontos=function(){
     </div>
     <div class="pt-sec">
       <h3>✅ Entregas do mês</h3>
-      ${concluidas.length?`<div class="table-wrap"><table><thead><tr><th>Atividade</th><th>Porte</th><th>Pts</th><th>Data-limite</th><th>Concluída em</th><th>No prazo?</th><th>Solicitante</th><th>Aceite</th></tr></thead><tbody>
+      ${concluidas.length?`<div class="table-wrap"><table><thead><tr><th>Atividade</th><th>Responsável</th><th>Porte</th><th>Pts</th><th>Data-limite</th><th>Concluída em</th><th>No prazo?</th><th>Solicitante</th><th>Aceite</th></tr></thead><tbody>
         ${concluidas.map(a=>{
           const ok=a.prazo&&a.concluidoEm<=a.prazo;
           return `<tr>
             <td>${escP(a.titulo||'')}</td>
+            <td>👤 ${escP(a.responsavel||'—')}</td>
             <td>${escP(a.porte||'—')}</td>
             <td><b>${pontosDe(a)||'—'}</b></td>
             <td>${fmtPrazo(a.prazo)||'—'}</td>
@@ -941,8 +1000,8 @@ window.renderPontos=function(){
     </div>
     <div class="pt-sec">
       <h3>⛔ Pausas no mês (bloqueios)</h3>
-      ${pausasMes.length?`<div class="table-wrap"><table><thead><tr><th>Atividade</th><th>Classificação</th><th>Motivo</th><th>Início</th><th>Fim</th><th>Dias no mês</th></tr></thead><tbody>
-        ${pausasMes.map(p=>`<tr><td>${escP(p.titulo)}</td><td>${escP(p.tipo||'—')}</td><td>${escP(p.motivo||'—')}</td><td>${fmtPrazo(p.inicio)}</td><td>${p.aberta?'<b style="color:#e65100">em aberto</b>':fmtPrazo(p.fim)}</td><td>${diasPausa(p)}</td></tr>`).join('')}
+      ${pausasMes.length?`<div class="table-wrap"><table><thead><tr><th>Atividade</th><th>Responsável</th><th>Classificação</th><th>Motivo</th><th>Início</th><th>Fim</th><th>Dias no mês</th></tr></thead><tbody>
+        ${pausasMes.map(p=>`<tr><td>${escP(p.titulo)}</td><td>👤 ${escP(p.responsavel||'—')}</td><td>${escP(p.tipo||'—')}</td><td>${escP(p.motivo||'—')}</td><td>${fmtPrazo(p.inicio)}</td><td>${p.aberta?'<b style="color:#e65100">em aberto</b>':fmtPrazo(p.fim)}</td><td>${diasPausa(p)}</td></tr>`).join('')}
       </tbody></table></div>`:'<div class="empty" style="padding:14px">Nenhuma pausa registrada neste mês.</div>'}
     </div>`;
 };
@@ -954,6 +1013,7 @@ function cardAtividade(a){
   const obs=(a.observacoes||[]).length;
   const sub=(a.subtarefas||[]);const subFeito=sub.filter(x=>x.feito).length;
   const prio=a.prioridade||'Média';
+  const melh=solicitacoes.filter(x=>x.tipo==='melhoria'&&x.atividadeId===a._id&&(x.status||'Pendente')==='Pendente').length;
   el.innerHTML=`
     <div style="display:flex;align-items:flex-start;gap:7px;margin-bottom:3px">
       <span class="chk atv-card-check ${concl?'on':''}" title="Concluir">${concl?'✓':''}</span>
@@ -964,7 +1024,9 @@ function cardAtividade(a){
       <span class="prio-dot" style="background:${prioColor(prio)}"></span><span style="font-weight:600">${escP(prio)}</span>
       ${a.porte?`<span>· 🏆 ${escP(a.porte)} (${pontosDe(a)} pt${pontosDe(a)>1?'s':''})</span>`:'<span style="color:#c62828;font-weight:600">· ⚠️ sem porte</span>'}
       <span>· 👤 ${escP(a.responsavel||'sem responsável')}</span>
+      ${a.solicitante?`<span>· 🙋 ${escP(a.solicitante)}</span>`:''}
     </div>
+    ${melh?`<div class="sub" style="color:#1565c0;font-weight:600">💡 ${melh} melhoria(s) solicitada(s) aguardando análise</div>`:''}
     ${a.prazo?`<div class="sub" style="color:${(!concl&&a.prazo<hojeStr())?'#c62828':'#e65100'};font-weight:600">📅 ${fmtPrazo(a.prazo)}${(!concl&&a.prazo<hojeStr())?' · EM ATRASO':''}</div>`:'<div class="sub" style="color:#c62828;font-weight:600">⚠️ sem data-limite</div>'}
     ${concl?`<div class="sub" style="font-weight:600;color:${a.aceite==='Aceito'?'var(--verde)':(a.aceite==='Recusado'?'#c62828':'#e65100')}">🤝 Aceite: ${escP(a.aceite||'Pendente')}</div>`:''}
     ${a.status==='Pausado'&&a.pausaTipo?`<div class="sub" style="color:#e65100;font-weight:600">⛔ ${escP(a.pausaTipo)}${a.pausaMotivo?': '+escP(a.pausaMotivo):''}</div>`:''}
@@ -1071,7 +1133,7 @@ window.abrirAtividade=function(id){
     document.getElementById('pjPrazo').value=a.prazo||'';
     document.getElementById('pjPorte').value=a.porte||'';
     aplicarPorteNoModal((a.subtarefas||[]).length);
-    document.getElementById('pjSolic').value=a.solicitante||'';
+    preencherSolicSelect(a.solicitante||'');
     document.getElementById('pjAceite').value=a.aceite||'Pendente';
     document.getElementById('pjPausaMotivo').value=a.pausaMotivo||'';
     document.getElementById('pjPausaTipo').value=a.pausaTipo||'';
@@ -1080,7 +1142,8 @@ window.abrirAtividade=function(id){
   }else{
     projAtual=null;
     document.getElementById('mProjTitulo').textContent='✅ Nova Atividade';
-    ['pjId','pjNome','pjInfo','pjPrazo','pjSolic','pjPausaMotivo'].forEach(i=>document.getElementById(i).value='');
+    ['pjId','pjNome','pjInfo','pjPrazo','pjPausaMotivo'].forEach(i=>document.getElementById(i).value='');
+    preencherSolicSelect('');
     document.getElementById('pjStatus').value='Planejado';
     document.getElementById('pjTecnico').value='';
     document.getElementById('pjPrio').value='Média';
@@ -1097,7 +1160,7 @@ window.abrirAtividade=function(id){
   const la=localStorage.getItem('proj-autor');if(la)document.getElementById('pjObsAutor').value=la;
   document.getElementById('mProjBg').classList.add('open');
 };
-window.fecharProj=function(){document.getElementById('mProjBg').classList.remove('open');projAtual=null;};
+window.fecharProj=function(){document.getElementById('mProjBg').classList.remove('open');projAtual=null;solicVinculo=null;};
 
 window.onStatusChange=function(){
   document.getElementById('pjPausaBox').style.display=(document.getElementById('pjStatus').value==='Pausado')?'block':'none';
@@ -1156,7 +1219,15 @@ window.salvarAtividade=async function(){
   if(porte&&(!(prev&&prev.porteDefinidoEm)||(prev&&prev.porte!==porte)))data.porteDefinidoEm=hojeStr();
   try{
     if(id){await updateDoc(doc(db,'atividades',id),data);}
-    else{data.subtarefas=[];data.observacoes=[];data.criadoEm=serverTimestamp();await addDoc(collection(db,'atividades'),data);}
+    else{
+      data.subtarefas=[];data.observacoes=[];data.criadoEm=serverTimestamp();
+      const ref=await addDoc(collection(db,'atividades'),data);
+      // Atividade nasceu de uma solicitação do app: marca a solicitação como aceita e aponta pra atividade
+      if(solicVinculo){
+        await updateDoc(doc(db,'solicitacoes',solicVinculo.id),{status:'Aceita',atividadeCriadaId:ref.id,resposta:solicVinculo.resposta||'',respondidoEm:serverTimestamp(),atualizadoEm:serverTimestamp()});
+        solicVinculo=null;
+      }
+    }
     showToast('💾 Atividade salva!');fecharProj();
   }catch(e){showToast('❌ Erro ao salvar atividade','#c62828');console.error(e);}
 };
@@ -1194,6 +1265,97 @@ window.excluirAtividade=async function(){
   if(!confirm('Excluir esta atividade? Esta ação não pode ser desfeita.'))return;
   try{await deleteDoc(doc(db,'atividades',id));showToast('🗑️ Atividade excluída');fecharProj();}
   catch(e){showToast('❌ Erro ao excluir','#c62828');}
+};
+
+// SOLICITAÇÕES — pedidos de projeto novo / melhoria feitos pelos colaboradores na aba Projetos do app de chamados
+function solicPendentes(){return solicitacoes.filter(x=>(x.status||'Pendente')==='Pendente');}
+function atualizarBadgeSolic(){
+  const n=solicPendentes().length;
+  const b=document.getElementById('solicBadge');if(b){b.textContent=n;b.style.display=n?'inline-block':'none';}
+  const nb=document.getElementById('solicNavBadge');if(nb){nb.textContent=n;nb.style.display=n?'inline':'none';}
+}
+function solStatusCor(st){return st==='Aceita'?'var(--verde)':(st==='Recusada'?'#c62828':'#e65100');}
+function solRespostaDigitada(id){const i=document.getElementById('solResp_'+id);return i?i.value.trim():'';}
+window.abrirSolicitacoes=function(){renderSolicitacoes();document.getElementById('mSolicBg').classList.add('open');};
+window.fecharSolicitacoes=function(){document.getElementById('mSolicBg').classList.remove('open');};
+window.renderSolicitacoes=function(){
+  const box=document.getElementById('solLista');if(!box)return;
+  const f=document.getElementById('solFiltro').value;
+  const lista=solicitacoes.filter(x=>!f||(x.status||'Pendente')===f);
+  if(!lista.length){box.innerHTML=`<div class="empty" style="padding:18px">Nenhuma solicitação${f?' '+f.toLowerCase():''}. ${f==='Pendente'?'Caixa limpa. 🎉':''}</div>`;return;}
+  box.innerHTML=lista.map(x=>{
+    const st=x.status||'Pendente';const pend=st==='Pendente';
+    const atv=x.atividadeId?atividades.find(a=>a._id===x.atividadeId):null;
+    const criada=x.atividadeCriadaId?atividades.find(a=>a._id===x.atividadeCriadaId):null;
+    const abrir=atv||criada;
+    return `<div class="sol-item ${x.tipo==='novo'?'novo':''} ${pend?'':'done'}">
+      <div class="t">${x.tipo==='novo'?'🚀 Novo projeto':'💡 Melhoria'} · ${escP(x.titulo||'(sem título)')}</div>
+      <div class="m"><span>🙋 ${escP(x.solicitante||'—')}</span><span>🕒 ${fmtDt(x.criadoEm)||'—'}</span>
+        ${x.tipo==='melhoria'?`<span>📁 ${escP(x.atividadeTitulo||(atv&&atv.titulo)||'atividade não encontrada')}</span>`:''}
+        <span style="font-weight:700;color:${solStatusCor(st)}">● ${escP(st)}</span></div>
+      ${x.descricao?`<div class="lbl">${x.tipo==='novo'?'O que é o projeto':'Melhoria pedida'}</div><p>${escP(x.descricao)}</p>`:''}
+      ${x.finalidade?`<div class="lbl">Para que serve</div><p>${escP(x.finalidade)}</p>`:''}
+      ${x.resposta?`<div class="lbl">Resposta do T.I.</div><p>${escP(x.resposta)}</p>`:''}
+      ${criada?`<div class="m"><span>✅ Virou a atividade <b>${escP(criada.titulo||'')}</b> (${escP(criada.status||'')})</span></div>`:''}
+      <div class="acts">
+        ${pend?`<input id="solResp_${x._id}" placeholder="Resposta ao solicitante (opcional)">
+          ${x.tipo==='novo'
+            ?`<button class="btn btn-green btn-sm" onclick="aceitarSolicNovo('${x._id}')">✅ Criar atividade</button>`
+            :`<button class="btn btn-green btn-sm" onclick="aceitarSolicMelhoria('${x._id}')" ${atv?'':'disabled title="Atividade não encontrada"'}>➕ Virar subtarefa</button>`}
+          <button class="btn btn-red btn-sm" onclick="responderSolic('${x._id}','Recusada')">✖ Recusar</button>`
+          :`<button class="btn btn-gray btn-sm" onclick="responderSolic('${x._id}','Pendente')">↩️ Reabrir</button>
+           <button class="btn btn-gray btn-sm" onclick="excluirSolic('${x._id}')" title="Excluir a solicitação (a atividade, se existir, não é apagada)">🗑️</button>`}
+        ${abrir?`<button class="btn btn-gray btn-sm" onclick="fecharSolicitacoes();abrirAtividade('${abrir._id}')">📂 Abrir atividade</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+};
+window.responderSolic=async function(id,status){
+  if(!db)return;
+  const upd={status,atualizadoEm:serverTimestamp()};
+  if(status==='Pendente'){upd.resposta='';upd.respondidoEm='';}
+  else{upd.resposta=solRespostaDigitada(id);upd.respondidoEm=serverTimestamp();}
+  try{
+    await updateDoc(doc(db,'solicitacoes',id),upd);
+    showToast(status==='Pendente'?'↩️ Solicitação reaberta':(status==='Recusada'?'✖ Solicitação recusada':'✅ Solicitação aceita'),status==='Recusada'?'#c62828':'#2e7d32');
+  }catch(e){showToast('❌ Erro ao responder solicitação','#c62828');console.error(e);}
+};
+window.excluirSolic=async function(id){
+  if(!db)return;
+  if(!confirm('Excluir esta solicitação? A atividade (se existir) não é apagada. Esta ação não pode ser desfeita.'))return;
+  try{await deleteDoc(doc(db,'solicitacoes',id));showToast('🗑️ Solicitação excluída');}
+  catch(e){showToast('❌ Erro ao excluir solicitação','#c62828');console.error(e);}
+};
+// Novo projeto: abre a Nova Atividade preenchida; o vínculo fecha quando a atividade é salva
+window.aceitarSolicNovo=function(id){
+  const x=solicitacoes.find(s=>s._id===id);if(!x)return;
+  solicVinculo={id,resposta:solRespostaDigitada(id)};
+  fecharSolicitacoes();
+  abrirAtividade();
+  document.getElementById('pjNome').value=x.titulo||'';
+  document.getElementById('pjInfo').value=[x.descricao||'',x.finalidade?'Para que serve: '+x.finalidade:''].filter(Boolean).join('\n\n');
+  preencherSolicSelect(x.solicitante||'');
+  document.getElementById('mProjTitulo').textContent='🚀 Nova Atividade (da solicitação de '+(x.solicitante||'colaborador')+')';
+  showToast('📨 Preenchido com a solicitação — defina data-limite e porte','#1565c0');
+};
+// Melhoria: vira subtarefa (título) + observação (descrição completa) na atividade; porte recalcula
+window.aceitarSolicMelhoria=async function(id){
+  const x=solicitacoes.find(s=>s._id===id);if(!x||!db)return;
+  const a=atividades.find(z=>z._id===x.atividadeId);
+  if(!a){showToast('❌ Atividade da solicitação não encontrada','#c62828');return;}
+  const agora=new Date().toLocaleString('pt-BR');
+  const subs=(a.subtarefas||[]).map(z=>({...z}));
+  subs.push({texto:'💡 '+(x.titulo||x.descricao||'Melhoria solicitada'),feito:false,em:agora,solicitadoPor:x.solicitante||''});
+  const obs=(a.observacoes||[]).map(z=>({...z}));
+  if(x.descricao)obs.push({texto:'💡 Melhoria solicitada: '+x.descricao,autor:x.solicitante||'',em:agora});
+  const upd={subtarefas:subs,observacoes:obs,atualizadoEm:serverTimestamp()};
+  const novo=porteAuto(subs.length);
+  if(novo&&a.porte!==novo){upd.porte=novo;upd.pontos=PORTES[novo];upd.porteDefinidoEm=hojeStr();}
+  try{
+    await updateDoc(doc(db,'atividades',a._id),upd);
+    await updateDoc(doc(db,'solicitacoes',id),{status:'Aceita',resposta:solRespostaDigitada(id),respondidoEm:serverTimestamp(),atualizadoEm:serverTimestamp()});
+    showToast(`➕ Subtarefa adicionada em "${a.titulo||''}"${(novo&&a.porte!==novo)?' · porte → '+novo:''}`);
+  }catch(e){showToast('❌ Erro ao aceitar melhoria','#c62828');console.error(e);}
 };
 
 // DIÁRIO — atividades diárias do estagiário

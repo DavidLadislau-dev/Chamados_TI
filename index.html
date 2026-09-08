@@ -124,6 +124,31 @@ footer{text-align:center;padding:12px;font-size:.72rem;color:#bbb}
 .theme-btn:hover{background:rgba(255,255,255,.3)}
 header{position:relative}
 .theme-btn-tela{position:absolute;top:18px;right:18px;background:#1a3a5c;color:#fff;border:none;width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+/* PROJETOS (atividades onde eu sou o solicitante) */
+.proj-item{border-radius:10px;padding:13px;margin-bottom:10px;border-left:4px solid var(--azul);background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.07)}
+.proj-item.p-Planejado{border-color:#78909c}
+.proj-item.p-Em-andamento{border-color:#1565c0}
+.proj-item.p-Pausado{border-color:var(--laranja)}
+.proj-item.p-Concluído{border-color:var(--verde)}
+.b-Planejado{background:#eceff1;color:#546e7a}
+.b-Em-andamento{background:#e3f2fd;color:#1565c0}
+.b-Pausado,.b-Pendente{background:#fff3e0;color:#e65100}
+.b-Concluído,.b-Aceita{background:#e8f5e9;color:#2e7d32}
+.b-Recusada{background:#fce4ec;color:#c62828}
+.prog{height:7px;background:#e8eef5;border-radius:4px;overflow:hidden;margin:8px 0 5px}
+.prog i{display:block;height:100%;background:var(--verde);border-radius:4px;transition:width .3s}
+.proj-item details{margin-top:6px}
+.proj-item summary{cursor:pointer;font-size:.76rem;font-weight:700;color:var(--azul);list-style-position:inside}
+.sub-li{font-size:.78rem;color:#444;padding:3px 0 3px 4px;display:flex;gap:6px;align-items:flex-start;line-height:1.35}
+.sub-li.ok{color:#888;text-decoration:line-through}
+.btn-mini{width:auto;padding:7px 12px;font-size:.78rem;margin-top:8px;border-radius:7px}
+.sol-card{border-radius:10px;padding:11px 13px;margin-bottom:8px;background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.07);border-left:4px solid #7b1fa2}
+.sol-card.melhoria{border-left-color:#1565c0}
+.resp-box{font-size:.78rem;background:#f0f4f8;border-radius:7px;padding:8px 10px;margin-top:6px;color:#444;line-height:1.45}
+.resp-box b{color:var(--azul)}
+.modal-body{padding:14px 16px;overflow-y:auto}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#2e7d32;color:#fff;padding:10px 18px;border-radius:8px;font-size:.84rem;font-weight:600;opacity:0;pointer-events:none;transition:.25s;z-index:300;max-width:90%;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%)}
 /* DARK MODE */
 body.dark{background:#0f1419;color:#d8dde3;--azul:#5b9bd5;--azul2:#7fb6e0}
 body.dark #telaUsuario{background:#0f1419}
@@ -171,6 +196,17 @@ body.dark .b-ABERTO{background:#3d2510;color:#ffa863}
 body.dark .b-EMANDAMENTO,body.dark .b-EM-ANDAMENTO{background:#10293d;color:#5b9bd5}
 body.dark .b-CANCELADO{background:#3d1419;color:#ff7d7d}
 body.dark footer{color:#6b7a8e}
+body.dark .proj-item,body.dark .sol-card{background:#1a2535;color:#d8dde3;box-shadow:0 1px 5px rgba(0,0,0,.4)}
+body.dark .b-Planejado{background:#22344a;color:#a8b3c2}
+body.dark .b-Em-andamento{background:#10293d;color:#5b9bd5}
+body.dark .b-Pausado,body.dark .b-Pendente{background:#3d2510;color:#ffa863}
+body.dark .b-Concluído,body.dark .b-Aceita{background:#1b3a1f;color:#7dcb82}
+body.dark .b-Recusada{background:#3d1419;color:#ff7d7d}
+body.dark .prog{background:#22344a}
+body.dark .sub-li{color:#c5ccd6}
+body.dark .sub-li.ok{color:#6b7a8e}
+body.dark .resp-box{background:#0f1721;color:#c5ccd6}
+body.dark .btn-sec.btn-mini{background:#162231}
 body.dark .modal{background:#1a2535;color:#d8dde3}
 body.dark .modal-head{border-bottom-color:#22344a}
 body.dark .modal-head h3{color:#7fb6e0}
@@ -223,6 +259,7 @@ body.dark [style*="color:#333"],body.dark [style*="color:#222"]{color:#d8dde3 !i
   <nav>
     <button class="tab active" onclick="goTab('abrir',this)">➕ Abrir Chamado</button>
     <button class="tab" onclick="goTab('meus',this)">📋 Meus Chamados</button>
+    <button class="tab" onclick="goTab('projetos',this)">📁 Projetos</button>
   </nav>
   <main>
     <!-- ABA ABRIR -->
@@ -267,9 +304,44 @@ body.dark [style*="color:#333"],body.dark [style*="color:#222"]{color:#d8dde3 !i
       </div>
       <div id="cRes"><div class="empty">⏳ Carregando seus chamados...</div></div>
     </div>
+
+    <!-- ABA PROJETOS -->
+    <div class="page" id="tab-projetos">
+      <div class="card">
+        <h2>📁 Meus Projetos</h2>
+        <div style="font-size:.83rem;color:#666;margin-bottom:12px;line-height:1.5">Olá, <b id="projNome"></b>! Aqui ficam os projetos que você solicitou ao T.I., com o andamento em tempo real. Tem uma ideia? Peça um projeto novo ou uma melhoria num projeto seu.</div>
+        <button class="btn btn-primary" onclick="abrirSolicNovo()">🚀 Solicitar novo projeto</button>
+      </div>
+      <div id="pRes"><div class="empty">⏳ Carregando seus projetos...</div></div>
+      <div class="card" style="margin-top:4px">
+        <h2 style="margin-bottom:0;padding-bottom:0;border-bottom:none">📨 Minhas solicitações</h2>
+      </div>
+      <div id="sRes"><div class="empty" style="padding:12px">Nenhuma solicitação enviada ainda.</div></div>
+    </div>
   </main>
   <footer>Sistema de Chamados T.I. © Norte Geradores</footer>
 </div>
+
+<!-- MODAL SOLICITAÇÃO DE PROJETO / MELHORIA -->
+<div class="modal-bg" id="solicModal" onclick="if(event.target===this)fecharSolic()">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="solicTit">🚀 Solicitar novo projeto</h3>
+      <button onclick="fecharSolic()" title="Fechar">✕</button>
+    </div>
+    <div class="modal-info" id="solicInfo"></div>
+    <div class="modal-body">
+      <input type="hidden" id="solicTipo"><input type="hidden" id="solicAtvId"><input type="hidden" id="solicAtvTitulo">
+      <div class="form-row"><label class="req" id="solicLblTitulo">Nome do projeto</label><input type="text" id="solicTitulo" maxlength="120" placeholder="Ex.: Painel de indicadores do setor"></div>
+      <div class="form-row"><label class="req" id="solicLblDesc">O que é o projeto?</label><textarea id="solicDesc" maxlength="2000" placeholder="Explique o que você imagina: telas, relatórios, automações, quem vai usar..."></textarea></div>
+      <div class="form-row" id="solicRowFin"><label class="req">Para que ele vai servir?</label><textarea id="solicFin" maxlength="2000" placeholder="Qual problema resolve ou o que melhora no dia a dia do setor?"></textarea></div>
+      <div class="err" id="solicErr"></div>
+      <button class="btn btn-primary" id="solicBtn" onclick="enviarSolic()">📨 Enviar solicitação</button>
+      <button class="btn btn-gray" onclick="fecharSolic()" style="margin-top:8px">Cancelar</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
 
 <!-- MODAL CHAT -->
 <div class="modal-bg" id="chatModal" onclick="if(event.target===this)fecharChat()">
@@ -306,6 +378,7 @@ const firebaseConfig = {
 // ============================================================
 
 let db, usuarioAtual = null, campos = [], meusUnsubscribe = null, filtroStatus = '';
+let meusProjetos = [], minhasSolic = [], projUnsub = null, solicUnsub = null;
 let todosMeusChamados = [];
 let fotoBase64 = '';
 let chatUnsub = null, chatId = null;
@@ -394,8 +467,10 @@ window.selecionarUsuario = function(nome) {
   document.getElementById('appMain').style.display = 'flex';
   document.getElementById('userChipNome').textContent = '👤 ' + nome;
   document.getElementById('meusNome').textContent = nome;
+  document.getElementById('projNome').textContent = nome;
   buildForm();
   carregarMeusChamados();
+  carregarMeusProjetos();
   if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 };
 
@@ -403,6 +478,9 @@ window.trocarUsuario = function() {
   usuarioAtual = null;
   localStorage.removeItem('usuarioTI');
   if (meusUnsubscribe) meusUnsubscribe();
+  if (projUnsub) projUnsub();
+  if (solicUnsub) solicUnsub();
+  meusProjetos = []; minhasSolic = [];
   document.getElementById('telaUsuario').style.display = 'flex';
   document.getElementById('appMain').style.display = 'none';
   document.getElementById('userSearch').value = '';
@@ -782,6 +860,157 @@ window.enviarMensagemChat = async function() {
 };
 
 // ──────────────────────────────
+// PROJETOS — atividades do painel onde eu sou o solicitante + minhas solicitações
+// ──────────────────────────────
+const ORDEM_STATUS = {'Em andamento':0, 'Pausado':1, 'Planejado':2, 'Concluído':3};
+const tsMs = t => t?.toDate?.()?.getTime() || 0;
+function fmtPrazo(p) { if (!p || p.length < 10) return ''; return p.slice(8,10)+'/'+p.slice(5,7)+'/'+p.slice(0,4); }
+function hojeISO() { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function showToast(msg, bg) {
+  const t = document.getElementById('toast'); t.textContent = msg; t.style.background = bg || '#2e7d32';
+  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+function carregarMeusProjetos() {
+  if (!db || !usuarioAtual) return;
+  if (projUnsub) projUnsub();
+  if (solicUnsub) solicUnsub();
+  // Chave do vínculo: atividades.solicitante == nome escolhido na tela inicial (lista de colaboradores)
+  projUnsub = onSnapshot(query(collection(db,'atividades'), where('solicitante','==', usuarioAtual)), snap => {
+    meusProjetos = snap.docs.map(d => ({_id:d.id, ...d.data()})).sort((a,b) => {
+      const sa = ORDEM_STATUS[a.status] ?? 9, sb = ORDEM_STATUS[b.status] ?? 9;
+      return sa !== sb ? sa - sb : tsMs(b.atualizadoEm) - tsMs(a.atualizadoEm);
+    });
+    renderMeusProjetos();
+  }, err => {
+    console.error('projetos:', err);
+    document.getElementById('pRes').innerHTML = `<div class="empty">❌ Erro ao carregar projetos.<br><small style="color:#aaa">${escapeHtml(err.message)}</small></div>`;
+  });
+  solicUnsub = onSnapshot(query(collection(db,'solicitacoes'), where('solicitante','==', usuarioAtual)), snap => {
+    minhasSolic = snap.docs.map(d => ({_id:d.id, ...d.data()})).sort((a,b) => (tsMs(b.criadoEm)||Date.now()) - (tsMs(a.criadoEm)||Date.now()));
+    renderMinhasSolic();
+  }, err => console.error('solicitacoes:', err));
+}
+
+function renderMeusProjetos() {
+  const cont = document.getElementById('pRes');
+  if (!meusProjetos.length) {
+    cont.innerHTML = '<div class="empty">Você ainda não tem projetos solicitados.<br><small style="color:#aaa">Quando o T.I. cadastrar um projeto com você como solicitante, ele aparece aqui.</small></div>';
+    return;
+  }
+  cont.innerHTML = meusProjetos.map(a => {
+    const st = a.status || 'Planejado', key = st.replace(/\s/g,'-');
+    const sub = a.subtarefas || [], feitas = sub.filter(s => s.feito).length;
+    const concl = st === 'Concluído';
+    const pct = sub.length ? Math.round(feitas*100/sub.length) : (concl ? 100 : 0);
+    const atrasado = !concl && a.prazo && a.prazo < hojeISO();
+    const melh = minhasSolic.filter(s => s.tipo==='melhoria' && s.atividadeId===a._id && (s.status||'Pendente')==='Pendente').length;
+    return `<div class="proj-item p-${key}">
+      <div class="chamado-topo">
+        <div style="flex:1;min-width:0">
+          <b style="display:block;font-size:.9rem">${escapeHtml(a.titulo||'(sem título)')}</b>
+          <span style="font-size:.74rem;color:#777">👨‍💻 ${escapeHtml(a.responsavel||'T.I.')}${a.prioridade?' · ⚡ '+escapeHtml(a.prioridade):''}</span>
+        </div>
+        <span class="badge b-${key}">${escapeHtml(st)}</span>
+      </div>
+      ${a.info?`<p style="font-size:.8rem;color:#444;margin:4px 0;line-height:1.45;white-space:pre-wrap">${escapeHtml(a.info)}</p>`:''}
+      <div class="prog"><i style="width:${pct}%"></i></div>
+      <div style="font-size:.72rem;color:#888;display:flex;gap:10px;flex-wrap:wrap">
+        <span>✅ ${feitas}/${sub.length} etapas (${pct}%)</span>
+        ${a.prazo?`<span style="${atrasado?'color:#c62828;font-weight:700':''}">📅 ${fmtPrazo(a.prazo)}${atrasado?' · em atraso':''}</span>`:''}
+        ${concl?`<span style="color:var(--verde);font-weight:700">🏁 Entregue${a.concluidoEm?' em '+fmtPrazo(a.concluidoEm):''}</span>`:''}
+        ${concl?`<span>🤝 Aceite: ${escapeHtml(a.aceite||'Pendente')}</span>`:''}
+        ${st==='Pausado'&&a.pausaMotivo?`<span style="color:#e65100">⏸️ ${escapeHtml(a.pausaMotivo)}</span>`:''}
+        ${melh?`<span style="color:#1565c0;font-weight:700">💡 ${melh} melhoria(s) em análise</span>`:''}
+      </div>
+      ${sub.length?`<details><summary>Ver etapas (${feitas}/${sub.length})</summary>${sub.map(s=>`<div class="sub-li ${s.feito?'ok':''}"><span>${s.feito?'☑':'☐'}</span><span>${escapeHtml(s.texto||'')}</span></div>`).join('')}</details>`:''}
+      <button class="btn btn-sec btn-mini" onclick="abrirSolicMelhoria('${a._id}')">💡 Pedir melhoria</button>
+    </div>`;
+  }).join('');
+}
+
+function renderMinhasSolic() {
+  const cont = document.getElementById('sRes');
+  if (!minhasSolic.length) { cont.innerHTML = '<div class="empty" style="padding:16px">Nenhuma solicitação enviada ainda.</div>'; }
+  else cont.innerHTML = minhasSolic.map(s => {
+    const st = s.status || 'Pendente';
+    const rot = st==='Pendente' ? '⏳ Em análise' : (st==='Aceita' ? '✅ Aceita' : '❌ Recusada');
+    return `<div class="sol-card ${s.tipo==='melhoria'?'melhoria':''}">
+      <div class="chamado-topo" style="margin-bottom:2px">
+        <div style="flex:1;min-width:0">
+          <span style="font-size:.71rem;color:#999">${s.tipo==='melhoria'?'💡 Melhoria':'🚀 Novo projeto'} · ${fmtDt(s.criadoEm)||'enviando...'}</span>
+          <b style="display:block;font-size:.86rem;margin:2px 0">${escapeHtml(s.titulo||'')}</b>
+          ${s.tipo==='melhoria'&&s.atividadeTitulo?`<span style="font-size:.74rem;color:#777">📁 ${escapeHtml(s.atividadeTitulo)}</span>`:''}
+        </div>
+        <span class="badge b-${st}">${rot}</span>
+      </div>
+      ${s.descricao?`<p style="font-size:.8rem;color:#444;margin:4px 0;line-height:1.45;white-space:pre-wrap">${escapeHtml(s.descricao)}</p>`:''}
+      ${s.finalidade?`<p style="font-size:.78rem;color:#666;margin:2px 0;line-height:1.45;white-space:pre-wrap"><b>Para que serve:</b> ${escapeHtml(s.finalidade)}</p>`:''}
+      ${s.resposta?`<div class="resp-box"><b>Resposta do T.I.:</b> ${escapeHtml(s.resposta)}</div>`:''}
+    </div>`;
+  }).join('');
+  renderMeusProjetos(); // atualiza o contador de melhorias em análise nos cards
+}
+
+// Modal de solicitação (projeto novo ou melhoria em projeto meu)
+window.abrirSolicNovo = function() {
+  document.getElementById('solicTipo').value = 'novo';
+  document.getElementById('solicAtvId').value = ''; document.getElementById('solicAtvTitulo').value = '';
+  document.getElementById('solicTit').textContent = '🚀 Solicitar novo projeto';
+  document.getElementById('solicInfo').innerHTML = 'Conte o que você precisa. O T.I. analisa e, se aprovar, o projeto aparece aqui com o andamento.';
+  document.getElementById('solicLblTitulo').textContent = 'Nome do projeto';
+  document.getElementById('solicLblDesc').textContent = 'O que é o projeto?';
+  document.getElementById('solicDesc').placeholder = 'Explique o que você imagina: telas, relatórios, automações, quem vai usar...';
+  document.getElementById('solicRowFin').style.display = 'block';
+  abrirSolicModal();
+};
+window.abrirSolicMelhoria = function(id) {
+  const a = meusProjetos.find(p => p._id === id); if (!a) return;
+  document.getElementById('solicTipo').value = 'melhoria';
+  document.getElementById('solicAtvId').value = id; document.getElementById('solicAtvTitulo').value = a.titulo || '';
+  document.getElementById('solicTit').textContent = '💡 Pedir melhoria';
+  document.getElementById('solicInfo').innerHTML = `Projeto: <b>${escapeHtml(a.titulo||'')}</b> · ${escapeHtml(a.status||'')}`;
+  document.getElementById('solicLblTitulo').textContent = 'Título da melhoria';
+  document.getElementById('solicLblDesc').textContent = 'Descreva a melhoria';
+  document.getElementById('solicDesc').placeholder = 'O que precisa mudar ou ser adicionado? Como isso ajuda no seu trabalho?';
+  document.getElementById('solicRowFin').style.display = 'none';
+  abrirSolicModal();
+};
+function abrirSolicModal() {
+  ['solicTitulo','solicDesc','solicFin'].forEach(i => document.getElementById(i).value = '');
+  document.getElementById('solicErr').style.display = 'none';
+  const btn = document.getElementById('solicBtn'); btn.disabled = false; btn.textContent = '📨 Enviar solicitação';
+  document.getElementById('solicModal').classList.add('open');
+  setTimeout(() => document.getElementById('solicTitulo').focus(), 150);
+}
+window.fecharSolic = function() { document.getElementById('solicModal').classList.remove('open'); };
+window.enviarSolic = async function() {
+  const err = document.getElementById('solicErr'); err.style.display = 'none';
+  if (!db || !usuarioAtual) { err.textContent = '❌ Sem conexão com o servidor!'; err.style.display = 'block'; return; }
+  const tipo = document.getElementById('solicTipo').value;
+  const titulo = document.getElementById('solicTitulo').value.trim();
+  const descricao = document.getElementById('solicDesc').value.trim();
+  const finalidade = document.getElementById('solicFin').value.trim();
+  if (!titulo || !descricao || (tipo === 'novo' && !finalidade)) { err.textContent = '⚠️ Preencha todos os campos obrigatórios (*)'; err.style.display = 'block'; return; }
+  const btn = document.getElementById('solicBtn'); btn.disabled = true; btn.textContent = '⏳ Enviando...';
+  try {
+    await addDoc(collection(db,'solicitacoes'), {
+      tipo, titulo, descricao,
+      finalidade: tipo === 'novo' ? finalidade : '',
+      atividadeId: tipo === 'melhoria' ? document.getElementById('solicAtvId').value : '',
+      atividadeTitulo: tipo === 'melhoria' ? document.getElementById('solicAtvTitulo').value : '',
+      solicitante: usuarioAtual, status: 'Pendente', resposta: '', atividadeCriadaId: '',
+      criadoEm: serverTimestamp(), atualizadoEm: serverTimestamp()
+    });
+    fecharSolic();
+    showToast(tipo === 'novo' ? '🚀 Solicitação enviada ao T.I.!' : '💡 Pedido de melhoria enviado!');
+  } catch (e) {
+    err.textContent = '❌ Erro ao enviar: ' + e.message; err.style.display = 'block';
+    btn.disabled = false; btn.textContent = '📨 Enviar solicitação';
+  }
+};
+
+// ──────────────────────────────
 // TABS
 // ──────────────────────────────
 window.goTab = function(id, btn) {
@@ -790,6 +1019,7 @@ window.goTab = function(id, btn) {
   document.getElementById('tab-'+id).classList.add('active');
   btn.classList.add('active');
   if (id === 'meus') renderMeusChamados();
+  if (id === 'projetos') { renderMeusProjetos(); renderMinhasSolic(); }
 };
 
 // ──────────────────────────────
