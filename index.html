@@ -149,6 +149,13 @@ header{position:relative}
 .modal-body{padding:14px 16px;overflow-y:auto}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#2e7d32;color:#fff;padding:10px 18px;border-radius:8px;font-size:.84rem;font-weight:600;opacity:0;pointer-events:none;transition:.25s;z-index:300;max-width:90%;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%)}
+/* ACEITE DA ENTREGA (só o solicitante, com a atividade Concluída) */
+.aceite-box{margin-top:8px;padding:10px 12px;border-radius:8px;font-size:.8rem;line-height:1.45;background:#fff8e1;border:1px solid #ffe082;color:#5d4037}
+.aceite-box.ok{background:#e8f5e9;border-color:#a5d6a7;color:#1b5e20}
+.aceite-box.nok{background:#fce4ec;border-color:#f8bbd0;color:#880e4f}
+.aceite-box small{color:inherit;opacity:.8}
+.aceite-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.aceite-btns .btn{margin-top:0}
 /* DARK MODE */
 body.dark{background:#0f1419;color:#d8dde3;--azul:#5b9bd5;--azul2:#7fb6e0}
 body.dark #telaUsuario{background:#0f1419}
@@ -207,6 +214,9 @@ body.dark .sub-li{color:#c5ccd6}
 body.dark .sub-li.ok{color:#6b7a8e}
 body.dark .resp-box{background:#0f1721;color:#c5ccd6}
 body.dark .btn-sec.btn-mini{background:#162231}
+body.dark .aceite-box{background:#3d2f10;border-color:#5d4a1a;color:#ffe0a3}
+body.dark .aceite-box.ok{background:#1b3a1f;border-color:#2e7d32;color:#a5d6a7}
+body.dark .aceite-box.nok{background:#3d1419;border-color:#7f1d2b;color:#ffb3c1}
 body.dark .modal{background:#1a2535;color:#d8dde3}
 body.dark .modal-head{border-bottom-color:#22344a}
 body.dark .modal-head h3{color:#7fb6e0}
@@ -259,7 +269,7 @@ body.dark [style*="color:#333"],body.dark [style*="color:#222"]{color:#d8dde3 !i
   <nav>
     <button class="tab active" onclick="goTab('abrir',this)">➕ Abrir Chamado</button>
     <button class="tab" onclick="goTab('meus',this)">📋 Meus Chamados</button>
-    <button class="tab" onclick="goTab('projetos',this)">📁 Projetos</button>
+    <button class="tab" onclick="goTab('projetos',this)">📁 Projetos<span class="msg-badge" id="projTabBadge" style="display:none" title="Entregas aguardando seu aceite"></span></button>
   </nav>
   <main>
     <!-- ABA ABRIR -->
@@ -342,6 +352,24 @@ body.dark [style*="color:#333"],body.dark [style*="color:#222"]{color:#d8dde3 !i
   </div>
 </div>
 <div class="toast" id="toast"></div>
+
+<!-- MODAL RECUSAR ENTREGA -->
+<div class="modal-bg" id="aceiteModal" onclick="if(event.target===this)fecharRecusa()">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>❌ Recusar entrega</h3>
+      <button onclick="fecharRecusa()" title="Fechar">✕</button>
+    </div>
+    <div class="modal-info" id="recusaInfo"></div>
+    <div class="modal-body">
+      <input type="hidden" id="recusaAtvId">
+      <div class="form-row"><label class="req">O que não ficou como você pediu?</label><textarea id="recusaMotivo" maxlength="1000" placeholder="Explique o que precisa ser ajustado. O T.I. recebe isso como observação no projeto."></textarea></div>
+      <div class="err" id="recusaErr"></div>
+      <button class="btn btn-primary" id="recusaBtn" onclick="confirmarRecusa()">❌ Confirmar recusa</button>
+      <button class="btn btn-gray" onclick="fecharRecusa()" style="margin-top:8px">Cancelar</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL CHAT -->
 <div class="modal-bg" id="chatModal" onclick="if(event.target===this)fecharChat()">
@@ -863,6 +891,9 @@ window.enviarMensagemChat = async function() {
 // PROJETOS — atividades do painel onde eu sou o solicitante + minhas solicitações
 // ──────────────────────────────
 const ORDEM_STATUS = {'Em andamento':0, 'Pausado':1, 'Planejado':2, 'Concluído':3};
+const aguardaAceite = a => a.status === 'Concluído' && (a.aceite || 'Pendente') === 'Pendente';
+const ordemProj = a => aguardaAceite(a) ? -1 : (ORDEM_STATUS[a.status] ?? 9); // entrega esperando o aceite vai pro topo
+let primeiraCargaProj = true;
 const tsMs = t => t?.toDate?.()?.getTime() || 0;
 function fmtPrazo(p) { if (!p || p.length < 10) return ''; return p.slice(8,10)+'/'+p.slice(5,7)+'/'+p.slice(0,4); }
 function hojeISO() { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -875,10 +906,23 @@ function carregarMeusProjetos() {
   if (!db || !usuarioAtual) return;
   if (projUnsub) projUnsub();
   if (solicUnsub) solicUnsub();
+  primeiraCargaProj = true;
   // Chave do vínculo: atividades.solicitante == nome escolhido na tela inicial (lista de colaboradores)
   projUnsub = onSnapshot(query(collection(db,'atividades'), where('solicitante','==', usuarioAtual)), snap => {
-    meusProjetos = snap.docs.map(d => ({_id:d.id, ...d.data()})).sort((a,b) => {
-      const sa = ORDEM_STATUS[a.status] ?? 9, sb = ORDEM_STATUS[b.status] ?? 9;
+    const antes = Object.fromEntries(meusProjetos.map(p => [p._id, p]));
+    const novos = snap.docs.map(d => ({_id:d.id, ...d.data()}));
+    // Avisa quando o T.I. marca um projeto meu como entregue (pede o aceite)
+    if (!primeiraCargaProj) novos.forEach(n => {
+      const o = antes[n._id];
+      if (o && o.status !== 'Concluído' && n.status === 'Concluído') {
+        showToast(`🎁 "${n.titulo||''}" foi entregue! Aceite ou recuse na aba Projetos.`);
+        if ('Notification' in window && Notification.permission === 'granted')
+          new Notification('🎁 Projeto entregue', {body: (n.titulo||'') + ' — aceite ou recuse na aba Projetos', tag: 'entrega-'+n._id});
+      }
+    });
+    primeiraCargaProj = false;
+    meusProjetos = novos.sort((a,b) => {
+      const sa = ordemProj(a), sb = ordemProj(b);
       return sa !== sb ? sa - sb : tsMs(b.atualizadoEm) - tsMs(a.atualizadoEm);
     });
     renderMeusProjetos();
@@ -894,6 +938,8 @@ function carregarMeusProjetos() {
 
 function renderMeusProjetos() {
   const cont = document.getElementById('pRes');
+  const nAceite = meusProjetos.filter(aguardaAceite).length;
+  const tb = document.getElementById('projTabBadge'); tb.textContent = nAceite; tb.style.display = nAceite ? 'inline-block' : 'none';
   if (!meusProjetos.length) {
     cont.innerHTML = '<div class="empty">Você ainda não tem projetos solicitados.<br><small style="color:#aaa">Quando o T.I. cadastrar um projeto com você como solicitante, ele aparece aqui.</small></div>';
     return;
@@ -919,10 +965,10 @@ function renderMeusProjetos() {
         <span>✅ ${feitas}/${sub.length} etapas (${pct}%)</span>
         ${a.prazo?`<span style="${atrasado?'color:#c62828;font-weight:700':''}">📅 ${fmtPrazo(a.prazo)}${atrasado?' · em atraso':''}</span>`:''}
         ${concl?`<span style="color:var(--verde);font-weight:700">🏁 Entregue${a.concluidoEm?' em '+fmtPrazo(a.concluidoEm):''}</span>`:''}
-        ${concl?`<span>🤝 Aceite: ${escapeHtml(a.aceite||'Pendente')}</span>`:''}
         ${st==='Pausado'&&a.pausaMotivo?`<span style="color:#e65100">⏸️ ${escapeHtml(a.pausaMotivo)}</span>`:''}
         ${melh?`<span style="color:#1565c0;font-weight:700">💡 ${melh} melhoria(s) em análise</span>`:''}
       </div>
+      ${concl?renderAceite(a):''}
       ${sub.length?`<details><summary>Ver etapas (${feitas}/${sub.length})</summary>${sub.map(s=>`<div class="sub-li ${s.feito?'ok':''}"><span>${s.feito?'☑':'☐'}</span><span>${escapeHtml(s.texto||'')}</span></div>`).join('')}</details>`:''}
       <button class="btn btn-sec btn-mini" onclick="abrirSolicMelhoria('${a._id}')">💡 Pedir melhoria</button>
     </div>`;
@@ -951,6 +997,49 @@ function renderMinhasSolic() {
   }).join('');
   renderMeusProjetos(); // atualiza o contador de melhorias em análise nos cards
 }
+
+// Aceite da entrega: só o solicitante, pelo app, e só com a atividade Concluída (o painel apenas mostra)
+function renderAceite(a) {
+  const st = a.aceite || 'Pendente';
+  const quando = a.aceiteEm ? ' em ' + fmtPrazo(a.aceiteEm) : '';
+  if (st === 'Aceito') return `<div class="aceite-box ok">🤝 Você aceitou esta entrega${quando}.</div>`;
+  if (st === 'Recusado') return `<div class="aceite-box nok">❌ Você recusou esta entrega${quando}${a.aceiteObs ? ': ' + escapeHtml(a.aceiteObs) : '.'}<br><small>Quando o T.I. ajustar, você pode aceitar aqui.</small>
+    <div class="aceite-btns"><button class="btn btn-primary btn-mini" onclick="darAceite('${a._id}')">✅ Aceitar agora</button></div></div>`;
+  return `<div class="aceite-box">🎁 O T.I. marcou esta entrega como concluída${a.concluidoEm ? ' em ' + fmtPrazo(a.concluidoEm) : ''}. Ficou como você pediu?
+    <div class="aceite-btns"><button class="btn btn-primary btn-mini" onclick="darAceite('${a._id}')">✅ Aceitar entrega</button><button class="btn btn-sec btn-mini" onclick="abrirRecusa('${a._id}')">❌ Recusar</button></div></div>`;
+}
+async function gravarAceite(a, status, motivo) {
+  const obs = (a.observacoes || []).map(o => ({...o}));
+  obs.push({texto: status === 'Aceito' ? '🤝 Entrega aceita pelo solicitante' : '❌ Entrega recusada pelo solicitante: ' + motivo, autor: usuarioAtual, em: new Date().toLocaleString('pt-BR')});
+  await updateDoc(doc(db,'atividades',a._id), {aceite: status, aceiteEm: hojeISO(), aceitePor: usuarioAtual, aceiteObs: motivo || '', observacoes: obs, atualizadoEm: serverTimestamp()});
+}
+window.darAceite = async function(id) {
+  const a = meusProjetos.find(p => p._id === id); if (!a || !db) return;
+  if (a.status !== 'Concluído') { showToast('⚠️ O T.I. ainda não concluiu esta entrega.', '#e65100'); return; }
+  try { await gravarAceite(a, 'Aceito', ''); showToast('🤝 Entrega aceita. Obrigado!'); }
+  catch (e) { showToast('❌ Erro ao registrar o aceite', '#c62828'); console.error(e); }
+};
+window.abrirRecusa = function(id) {
+  const a = meusProjetos.find(p => p._id === id); if (!a) return;
+  document.getElementById('recusaAtvId').value = id;
+  document.getElementById('recusaInfo').innerHTML = `Projeto: <b>${escapeHtml(a.titulo||'')}</b>${a.concluidoEm ? ' · concluído em ' + fmtPrazo(a.concluidoEm) : ''}`;
+  document.getElementById('recusaMotivo').value = '';
+  document.getElementById('recusaErr').style.display = 'none';
+  const btn = document.getElementById('recusaBtn'); btn.disabled = false; btn.textContent = '❌ Confirmar recusa';
+  document.getElementById('aceiteModal').classList.add('open');
+  setTimeout(() => document.getElementById('recusaMotivo').focus(), 150);
+};
+window.fecharRecusa = function() { document.getElementById('aceiteModal').classList.remove('open'); };
+window.confirmarRecusa = async function() {
+  const err = document.getElementById('recusaErr'); err.style.display = 'none';
+  const a = meusProjetos.find(p => p._id === document.getElementById('recusaAtvId').value);
+  const motivo = document.getElementById('recusaMotivo').value.trim();
+  if (!a || !db) { err.textContent = '❌ Sem conexão com o servidor!'; err.style.display = 'block'; return; }
+  if (!motivo) { err.textContent = '⚠️ Explique o que precisa ser ajustado.'; err.style.display = 'block'; return; }
+  const btn = document.getElementById('recusaBtn'); btn.disabled = true; btn.textContent = '⏳ Enviando...';
+  try { await gravarAceite(a, 'Recusado', motivo); fecharRecusa(); showToast('❌ Recusa registrada. O T.I. foi avisado.', '#c62828'); }
+  catch (e) { err.textContent = '❌ Erro: ' + e.message; err.style.display = 'block'; btn.disabled = false; btn.textContent = '❌ Confirmar recusa'; }
+};
 
 // Modal de solicitação (projeto novo ou melhoria em projeto meu)
 window.abrirSolicNovo = function() {

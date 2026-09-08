@@ -250,6 +250,7 @@ body.dark .sol-item{background:#22344a;border-color:#33425e;color:#d8dde3}
 body.dark .sol-item .t{color:#d8dde3}
 body.dark .sol-item p{color:#c5ccd6}
 body.dark .sol-item .acts input{background:#0f1721;color:#d8dde3;border-color:#33425e}
+body.dark #pjAceiteBox{background:#16202e;border-color:#33425e;color:#d8dde3}
 body.dark .pt-sec{background:#1a2535;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 body.dark [style*="color:#c62828"]{color:#ff7d7d !important}
 </style>
@@ -369,7 +370,8 @@ body.dark [style*="color:#c62828"]{color:#ff7d7d !important}
       <div style="flex:1"><label>Solicitante</label><select id="pjSolic"></select>
         <div style="font-size:.66rem;color:#888;margin-top:3px">Mesmo nome do app de chamados — a pessoa vê o projeto na aba 📁 Projetos.</div></div>
       <div style="flex:1"><label>Aceite do solicitante</label>
-        <select id="pjAceite"><option>Pendente</option><option>Aceito</option><option>Recusado</option></select>
+        <div id="pjAceiteBox" style="font-size:.8rem;padding:7px 9px;border:1px dashed #cfd6de;border-radius:6px;background:#f7f9fb;min-height:34px;line-height:1.35">—</div>
+        <div style="font-size:.66rem;color:#888;margin-top:3px">Só o solicitante dá o aceite, pela aba 📁 Projetos do app, com a atividade Concluída.</div>
       </div>
     </div>
     <div class="form-row" id="pjPausaBox" style="display:none">
@@ -719,7 +721,21 @@ try {
 
   // Listener tempo real das atividades
   onSnapshot(query(collection(db,'atividades'),orderBy('criadoEm','desc')), snap=>{
-    atividades=snap.docs.map(d=>({_id:d.id,...d.data()}));
+    const novosAtv=snap.docs.map(d=>({_id:d.id,...d.data()}));
+    // Aviso quando o solicitante dá ou recusa o aceite pela aba Projetos do app
+    if(atividades.length){
+      const antes=Object.fromEntries(atividades.map(a=>[a._id,a]));
+      novosAtv.forEach(n=>{
+        const o=antes[n._id];if(!o||(o.aceite||'Pendente')===(n.aceite||'Pendente'))return;
+        const quem=n.aceitePor||n.solicitante||'O solicitante';
+        if(n.aceite==='Aceito')showToast(`🤝 ${quem} aceitou a entrega de "${n.titulo||''}"`);
+        else if(n.aceite==='Recusado')showToast(`❌ ${quem} recusou "${n.titulo||''}"${n.aceiteObs?': '+n.aceiteObs:''}`,'#c62828');
+        if(n.aceite&&n.aceite!=='Pendente'&&Notification.permission==='granted')
+          new Notification(n.aceite==='Aceito'?'🤝 Entrega aceita':'❌ Entrega recusada',{body:`${quem} · ${n.titulo||''}${n.aceiteObs?' — '+n.aceiteObs:''}`,tag:'aceite-'+n._id});
+      });
+    }
+    atividades=novosAtv;
+    if(projAtual){const a=atividades.find(x=>x._id===projAtual);if(a)renderAceiteBox(a);}
     if(document.getElementById('page-atividades').classList.contains('active')) renderAtividades();
   }, err=>console.warn('atividades snapshot',err));
   // Listener tempo real do diário (atividades diárias do estagiário)
@@ -801,6 +817,17 @@ function preencherSolicSelect(val){
   const extra=(v&&!lista.includes(v))?`<option value="${escP(v)}">${escP(v)} (fora da lista)</option>`:'';
   s.innerHTML='<option value="">— sem solicitante —</option>'+extra+lista.map(n=>`<option value="${escP(n)}">${escP(n)}</option>`).join('');
   s.value=v;
+}
+// Aceite é do solicitante (aba Projetos do app): aqui só mostra
+function renderAceiteBox(a){
+  const box=document.getElementById('pjAceiteBox');if(!box)return;
+  if(!a){box.innerHTML='<span style="color:#888">⏳ Pendente — a pessoa aceita no app depois que a atividade estiver Concluída.</span>';return;}
+  const st=a.aceite||'Pendente';
+  const quando=(a.aceiteEm?' em '+fmtPrazo(a.aceiteEm):'')+(a.aceitePor?' por '+escP(a.aceitePor):'');
+  if(st==='Aceito')box.innerHTML=`<b style="color:var(--verde)">🤝 Aceito</b>${quando}`;
+  else if(st==='Recusado')box.innerHTML=`<b style="color:#c62828">❌ Recusado</b>${quando}${a.aceiteObs?'<br><span style="color:#555">'+escP(a.aceiteObs)+'</span>':''}`;
+  else if(!a.solicitante)box.innerHTML='<b style="color:#e65100">⏳ Pendente</b> — <span style="color:#c62828">sem solicitante: defina ao lado para a pessoa poder aceitar no app</span>';
+  else box.innerHTML=`<b style="color:#e65100">⏳ Pendente</b> — ${a.status==='Concluído'?'aguardando '+escP(a.solicitante)+' no app':'só depois de Concluído'}`;
 }
 function tecnicosList(){const c=campos.find(c=>c.id==='sol');return (c&&Array.isArray(c.options))?c.options:[];}
 function preencherTecSelect(id,tecs,comTodos){
@@ -994,7 +1021,7 @@ window.renderPontos=function(){
             <td>${fmtPrazo(a.concluidoEm)||'—'}</td>
             <td style="font-weight:700;color:${ok?'var(--verde)':'#c62828'}">${ok?'Sim':'Não'}</td>
             <td>${escP(a.solicitante||'—')}</td>
-            <td style="font-weight:700;color:${a.aceite==='Aceito'?'var(--verde)':(a.aceite==='Recusado'?'#c62828':'#e65100')}">${escP(a.aceite||'Pendente')}</td>
+            <td style="font-weight:700;color:${a.aceite==='Aceito'?'var(--verde)':(a.aceite==='Recusado'?'#c62828':'#e65100')}">${escP(a.aceite||'Pendente')}${a.aceite&&a.aceite!=='Pendente'&&a.aceiteEm?`<br><small style="font-weight:400;color:#888">${fmtPrazo(a.aceiteEm)}${a.aceitePor?' · '+escP(a.aceitePor):''}</small>`:''}</td>
           </tr>`;}).join('')}
       </tbody></table></div>`:'<div class="empty" style="padding:14px">Nenhuma entrega neste mês.</div>'}
     </div>
@@ -1028,7 +1055,7 @@ function cardAtividade(a){
     </div>
     ${melh?`<div class="sub" style="color:#1565c0;font-weight:600">💡 ${melh} melhoria(s) solicitada(s) aguardando análise</div>`:''}
     ${a.prazo?`<div class="sub" style="color:${(!concl&&a.prazo<hojeStr())?'#c62828':'#e65100'};font-weight:600">📅 ${fmtPrazo(a.prazo)}${(!concl&&a.prazo<hojeStr())?' · EM ATRASO':''}</div>`:'<div class="sub" style="color:#c62828;font-weight:600">⚠️ sem data-limite</div>'}
-    ${concl?`<div class="sub" style="font-weight:600;color:${a.aceite==='Aceito'?'var(--verde)':(a.aceite==='Recusado'?'#c62828':'#e65100')}">🤝 Aceite: ${escP(a.aceite||'Pendente')}</div>`:''}
+    ${concl?`<div class="sub" style="font-weight:600;color:${a.aceite==='Aceito'?'var(--verde)':(a.aceite==='Recusado'?'#c62828':'#e65100')}">🤝 Aceite: ${escP(a.aceite||'Pendente')}${a.aceite&&a.aceite!=='Pendente'&&a.aceiteEm?' · '+fmtPrazo(a.aceiteEm):''}${a.aceite==='Recusado'&&a.aceiteObs?' — '+escP(a.aceiteObs):''}</div>`:''}
     ${a.status==='Pausado'&&a.pausaTipo?`<div class="sub" style="color:#e65100;font-weight:600">⛔ ${escP(a.pausaTipo)}${a.pausaMotivo?': '+escP(a.pausaMotivo):''}</div>`:''}
     ${a.info?`<div style="font-size:.78rem;color:#555;margin:4px 0 6px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap">${escP(a.info)}</div>`:''}
     <div class="cc-actions">
@@ -1134,7 +1161,7 @@ window.abrirAtividade=function(id){
     document.getElementById('pjPorte').value=a.porte||'';
     aplicarPorteNoModal((a.subtarefas||[]).length);
     preencherSolicSelect(a.solicitante||'');
-    document.getElementById('pjAceite').value=a.aceite||'Pendente';
+    renderAceiteBox(a);
     document.getElementById('pjPausaMotivo').value=a.pausaMotivo||'';
     document.getElementById('pjPausaTipo').value=a.pausaTipo||'';
     document.getElementById('pjBtnExcluir').style.display='inline-block';
@@ -1149,7 +1176,7 @@ window.abrirAtividade=function(id){
     document.getElementById('pjPrio').value='Média';
     document.getElementById('pjPorte').value='';
     aplicarPorteNoModal(0);
-    document.getElementById('pjAceite').value='Pendente';
+    renderAceiteBox(null);
     document.getElementById('pjPausaTipo').value='';
     document.getElementById('pjBtnExcluir').style.display='none';
     renderObs([]);subEdit=[];
@@ -1183,7 +1210,6 @@ window.salvarAtividade=async function(){
   const pausaMotivo=document.getElementById('pjPausaMotivo').value.trim();
   const pausaTipo=document.getElementById('pjPausaTipo').value;
   if(status==='Pausado'&&(!pausaMotivo||!pausaTipo)){showToast('⚠️ Informe motivo e classificação da pausa','#e65100');onStatusChange();return;}
-  const aceite=document.getElementById('pjAceite').value||'Pendente';
   const data={
     titulo,
     status,
@@ -1195,7 +1221,6 @@ window.salvarAtividade=async function(){
     porte,
     pontos:PORTES[porte]||0,
     solicitante:document.getElementById('pjSolic').value.trim(),
-    aceite,
     atualizadoEm:serverTimestamp()
   };
   // Log de pausas — alimenta o fechamento mensal por classificação
@@ -1214,13 +1239,12 @@ window.salvarAtividade=async function(){
   // Datas de conclusão, aceite e definição do porte
   if(status==='Concluído')data.concluidoEm=jaConcluida?(prev.concluidoEm||hojeStr()):hojeStr();
   else data.concluidoEm='';
-  if(aceite==='Aceito')data.aceiteEm=(prev&&prev.aceiteEm)||hojeStr();
-  else data.aceiteEm='';
+  // Aceite (aceite/aceiteEm/aceitePor/aceiteObs) é do solicitante, gravado pela aba Projetos do app — o painel não mexe
   if(porte&&(!(prev&&prev.porteDefinidoEm)||(prev&&prev.porte!==porte)))data.porteDefinidoEm=hojeStr();
   try{
     if(id){await updateDoc(doc(db,'atividades',id),data);}
     else{
-      data.subtarefas=[];data.observacoes=[];data.criadoEm=serverTimestamp();
+      data.subtarefas=[];data.observacoes=[];data.aceite='Pendente';data.aceiteEm='';data.criadoEm=serverTimestamp();
       const ref=await addDoc(collection(db,'atividades'),data);
       // Atividade nasceu de uma solicitação do app: marca a solicitação como aceita e aponta pra atividade
       if(solicVinculo){
