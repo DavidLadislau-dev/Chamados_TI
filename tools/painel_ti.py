@@ -59,6 +59,7 @@ ALIASES = {
     "juridico-norte": "Acompanhamento de Processos Judiciais", "juridico": "Acompanhamento de Processos Judiciais", "painel juridico": "Acompanhamento de Processos Judiciais",
     "zpro": "Zpro - Migração", "z-pro": "Zpro - Migração", "sdr chatflow": "Zpro - Migração",
     "central-bots-norte": "Central de Bots (zPro)", "central bots": "Central de Bots (zPro)", "central de bots": "Central de Bots (zPro)",
+    "assistente-crm": "Assistente CRM (zPro)", "assistente crm": "Assistente CRM (zPro)", "agente_crm": "Assistente CRM (zPro)", "crm zpro": "Assistente CRM (zPro)",
     "campanhas-email": "Email Marketing", "campanhas email": "Email Marketing", "email marketing": "Email Marketing",
     "bi-manutencao": "BI de Manutenção", "bi manutencao": "BI de Manutenção",
     "tally-ng": "Tally NG", "tally": "Tally NG", "contagem": "Tally NG",
