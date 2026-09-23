@@ -247,8 +247,11 @@ def registrar(projeto: str, texto: str, feito=True, responsavel=RESPONSAVEL_PADR
                 f"Rode `painel-ti listar --todas` pra ver os títulos, ou repita com --criar pra criar essa atividade."
             )
         doc_id = _novo_id()
+        # Apelido conhecido (ALIASES) vira o título oficial; senão a próxima busca
+        # resolve o apelido e nunca encontra a atividade recém-criada.
+        titulo = ALIASES.get(_norm(projeto), projeto)
         campos = {
-            "titulo": projeto, "status": "Em andamento", "feito": False,
+            "titulo": titulo, "status": "Em andamento", "feito": False,
             "responsavel": responsavel, "prioridade": "Média", "info": "", "prazo": "",
             "subtarefas": [sub], "observacoes": [],
             "porte": "Pequeno", "pontos": 1, "porteDefinidoEm": hoje_str(),
@@ -258,8 +261,7 @@ def registrar(projeto: str, texto: str, feito=True, responsavel=RESPONSAVEL_PADR
             {"fieldPath": "atualizadoEm", "setToServerValue": "REQUEST_TIME"},
         ]
         _write_update(doc_id, campos, transforms, precond={"exists": False})
-        print(f"🆕 Atividade '{projeto}' criada no painel (responsável {responsavel}) com a 1ª subtarefa.")
-        titulo = projeto
+        print(f"🆕 Atividade '{titulo}' criada no painel (responsável {responsavel}) com a 1ª subtarefa.")
         n = 1
     else:
         n = len(a["subtarefas"]) + 1
