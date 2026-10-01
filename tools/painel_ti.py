@@ -12,7 +12,8 @@ Uso (PowerShell ou Bash):
 
 Regras que espelham o painel (painel_html.html):
   - subtarefa = {texto, feito, em: "DD/MM/AAAA, HH:MM:SS"}   (new Date().toLocaleString('pt-BR'))
-  - ao mudar a quantidade de subtarefas, o porte é automático: 1-2 Pequeno (1 pt), 3-6 Médio (3 pts), 7+ Grande (8 pts)
+  - ao mudar a quantidade de subtarefas, o porte é automático: 1-15 Pequeno (1 pt), 16-30 Médio (3 pts), 31+ Grande (8 pts);
+    atividade Concluído fica com o porte congelado (não recalcula)
   - observação = {texto, autor, em}
   - atualizadoEm/criadoEm = serverTimestamp
 
@@ -109,11 +110,12 @@ def hoje_str() -> str:
 
 
 def porte_auto(n: int):
+    # régua de 01/10/2026 (a antiga era 1-2 · 3-6 · 7+)
     if n <= 0:
         return None
-    if n <= 2:
+    if n <= 15:
         return "Pequeno"
-    if n <= 6:
+    if n <= 30:
         return "Médio"
     return "Grande"
 
@@ -266,7 +268,8 @@ def registrar(projeto: str, texto: str, feito=True, responsavel=RESPONSAVEL_PADR
     else:
         n = len(a["subtarefas"]) + 1
         campos = {}
-        novo = porte_auto(n)
+        # Concluída: porte congelado, pra não mexer nos fechamentos já fechados
+        novo = a["porte"] if (a["status"] == "Concluído" and a["porte"]) else porte_auto(n)
         if novo and a["porte"] != novo:
             campos.update({"porte": novo, "pontos": PORTES[novo], "porteDefinidoEm": hoje_str()})
         transforms = [

@@ -360,11 +360,11 @@ body.dark [style*="color:#c62828"]{color:#ff7d7d !important}
       <label>Porte (pontos de complexidade) <span style="color:var(--verm)">*</span></label>
       <select id="pjPorte">
         <option value="">— definir no planejamento —</option>
-        <option value="Pequeno">Pequeno — 1-2 subtarefas, até 1 semana (1 pt)</option>
-        <option value="Médio">Médio — 3-6 subtarefas, até 3 semanas (3 pts)</option>
-        <option value="Grande">Grande — 7+ subtarefas, mais de 1 mês (8 pts)</option>
+        <option value="Pequeno">Pequeno — 1 a 15 subtarefas (1 pt)</option>
+        <option value="Médio">Médio — 16 a 30 subtarefas (3 pts)</option>
+        <option value="Grande">Grande — 31+ subtarefas (8 pts)</option>
       </select>
-      <div id="pjPorteHint" style="font-size:.68rem;color:#888;margin-top:3px">Automático pela quantidade de subtarefas (1-2 Pequeno · 3-6 Médio · 7+ Grande). Sem subtarefas, defina à mão.</div>
+      <div id="pjPorteHint" style="font-size:.68rem;color:#888;margin-top:3px">Automático pela quantidade de subtarefas (1-15 Pequeno · 16-30 Médio · 31+ Grande). Sem subtarefas, defina à mão.</div>
     </div>
     <div class="form-row" style="display:flex;gap:8px">
       <div style="flex:1"><label>Solicitante</label><select id="pjSolic"></select>
@@ -797,10 +797,12 @@ window.goPage=function(p){
 // ============================ ATIVIDADES ============================
 const PROJ_STATUS=['Planejado','Em andamento','Pausado','Concluído'];
 const PORTES={'Pequeno':1,'Médio':3,'Grande':8}; // pontos de complexidade
-// Porte AUTOMÁTICO pela quantidade de subtarefas: 1-2 Pequeno · 3-6 Médio · 7+ Grande. Sem subtarefas, vale o escolhido à mão.
-function porteAuto(n){return n>=7?'Grande':n>=3?'Médio':n>=1?'Pequeno':'';}
-function porteHintTexto(n){return n>0?`⚙️ Automático: ${n} subtarefa${n>1?'s':''} → ${porteAuto(n)} (${PORTES[porteAuto(n)]} pt${PORTES[porteAuto(n)]>1?'s':''})`:'Sem subtarefas: defina à mão — vira automático ao adicionar subtarefas (1-2 Pequeno · 3-6 Médio · 7+ Grande).';}
-function aplicarPorteNoModal(n){const sel=document.getElementById('pjPorte');const h=document.getElementById('pjPorteHint');if(!sel||!h)return;if(n>0)sel.value=porteAuto(n);sel.disabled=n>0;h.textContent=porteHintTexto(n);}
+// Porte AUTOMÁTICO pela quantidade de subtarefas: 1-15 Pequeno · 16-30 Médio · 31+ Grande (régua de 01/10/2026; a antiga era 1-2 · 3-6 · 7+). Sem subtarefas, vale o escolhido à mão.
+// Concluída tem porte CONGELADO: não recalcula mais, pra não mexer nos fechamentos já fechados.
+function porteAuto(n){return n>=31?'Grande':n>=16?'Médio':n>=1?'Pequeno':'';}
+function porteCongelado(a){return (a&&a.status==='Concluído'&&a.porte)||'';}
+function porteHintTexto(n,cong){if(cong)return `🔒 Concluída: porte congelado em ${cong} (${PORTES[cong]} pt${PORTES[cong]>1?'s':''}) — não muda mais com as subtarefas.`;return n>0?`⚙️ Automático: ${n} subtarefa${n>1?'s':''} → ${porteAuto(n)} (${PORTES[porteAuto(n)]} pt${PORTES[porteAuto(n)]>1?'s':''})`:'Sem subtarefas: defina à mão — vira automático ao adicionar subtarefas (1-15 Pequeno · 16-30 Médio · 31+ Grande).';}
+function aplicarPorteNoModal(n,cong){const sel=document.getElementById('pjPorte');const h=document.getElementById('pjPorteHint');if(!sel||!h)return;if(cong)sel.value=cong;else if(n>0)sel.value=porteAuto(n);sel.disabled=!!cong||n>0;h.textContent=porteHintTexto(n,cong);}
 let projCal=null, projViewMode='cards', subEdit=[], pontosMes=null;
 function pontosDe(a){return PORTES[a.porte]||0;}
 function projStatusColor(s){return {'Planejado':'#7b1fa2','Em andamento':'#1565c0','Pausado':'#e65100','Concluído':'#2e7d32'}[s]||'#777';}
@@ -989,7 +991,7 @@ window.renderPontos=function(){
     <div class="toolbar">
       <label style="font-size:.8rem;font-weight:700;color:#555">Mês do fechamento:</label>
       <input type="month" value="${mes}" onchange="setPontosMes(this.value)" style="flex:0 0 auto;width:170px;min-width:0">
-      <span style="font-size:.73rem;color:#888">Porte automático pela quantidade de subtarefas (Pequeno=1 · Médio=3 · Grande=8 pts).</span>
+      <span style="font-size:.73rem;color:#888">Porte automático pela quantidade de subtarefas (1-15 Pequeno=1 · 16-30 Médio=3 · 31+ Grande=8 pts); concluída fica com o porte congelado.</span>
     </div>
     <div class="stats">
       <div class="sc g"><div class="n">${ptsEntregues}</div><div class="l">Pontos entregues — ${escP(mesLabel)}</div></div>
@@ -1115,14 +1117,15 @@ function renderSub(arr){
 function persistSub(){
   if(!projAtual||!db)return Promise.resolve();
   const upd={subtarefas:subEdit,atualizadoEm:serverTimestamp()};
-  // Porte automático: muda junto com a quantidade de subtarefas (inclusive nas concluídas)
+  // Porte automático: muda junto com a quantidade de subtarefas (menos nas concluídas, que ficam congeladas)
   const a=atividades.find(x=>x._id===projAtual);
+  const cong=porteCongelado(a);
   const novo=porteAuto(subEdit.length);
-  if(novo&&a&&a.porte!==novo){
+  if(!cong&&novo&&a&&a.porte!==novo){
     upd.porte=novo;upd.pontos=PORTES[novo];upd.porteDefinidoEm=hojeStr();
     showToast(`🏆 Porte ajustado para ${novo} (${PORTES[novo]} pt${PORTES[novo]>1?'s':''}) — ${subEdit.length} subtarefas`,'#1565c0');
   }
-  aplicarPorteNoModal(subEdit.length);
+  aplicarPorteNoModal(subEdit.length,cong);
   return updateDoc(doc(db,'atividades',projAtual),upd);
 }
 window.addSubtarefa=async function(){
@@ -1159,7 +1162,7 @@ window.abrirAtividade=function(id){
     document.getElementById('pjInfo').value=a.info||'';
     document.getElementById('pjPrazo').value=a.prazo||'';
     document.getElementById('pjPorte').value=a.porte||'';
-    aplicarPorteNoModal((a.subtarefas||[]).length);
+    aplicarPorteNoModal((a.subtarefas||[]).length,porteCongelado(a));
     preencherSolicSelect(a.solicitante||'');
     renderAceiteBox(a);
     document.getElementById('pjPausaMotivo').value=a.pausaMotivo||'';
@@ -1202,10 +1205,12 @@ window.salvarAtividade=async function(){
   const id=document.getElementById('pjId').value;
   const prev=id?atividades.find(x=>x._id===id):null;
   const jaConcluida=!!(prev&&prev.status==='Concluído');
-  // Regras do fechamento: data-limite e porte obrigatórios; porte é automático pela quantidade de subtarefas
+  // Regras do fechamento: data-limite e porte obrigatórios; porte é automático pela quantidade de subtarefas,
+  // mas a que já estava concluída e continua concluída mantém o porte (congelado). Reaberta volta pro automático.
   if(!prazo&&!jaConcluida){showToast('⚠️ Data-limite é obrigatória','#e65100');return;}
   const nSub=prev?(prev.subtarefas||[]).length:0;
-  const porte=nSub>0?porteAuto(nSub):document.getElementById('pjPorte').value;
+  const cong=status==='Concluído'?porteCongelado(prev):'';
+  const porte=cong||(nSub>0?porteAuto(nSub):document.getElementById('pjPorte').value);
   if(!porte&&!jaConcluida){showToast('⚠️ Defina o porte (pontos) ou adicione subtarefas','#e65100');return;}
   const pausaMotivo=document.getElementById('pjPausaMotivo').value.trim();
   const pausaTipo=document.getElementById('pjPausaTipo').value;
@@ -1362,7 +1367,7 @@ window.aceitarSolicNovo=function(id){
   document.getElementById('mProjTitulo').textContent='🚀 Nova Atividade (da solicitação de '+(x.solicitante||'colaborador')+')';
   showToast('📨 Preenchido com a solicitação — defina data-limite e porte','#1565c0');
 };
-// Melhoria: vira subtarefa (título) + observação (descrição completa) na atividade; porte recalcula
+// Melhoria: vira subtarefa (título) + observação (descrição completa) na atividade; porte recalcula (menos em concluída)
 window.aceitarSolicMelhoria=async function(id){
   const x=solicitacoes.find(s=>s._id===id);if(!x||!db)return;
   const a=atividades.find(z=>z._id===x.atividadeId);
@@ -1373,7 +1378,7 @@ window.aceitarSolicMelhoria=async function(id){
   const obs=(a.observacoes||[]).map(z=>({...z}));
   if(x.descricao)obs.push({texto:'💡 Melhoria solicitada: '+x.descricao,autor:x.solicitante||'',em:agora});
   const upd={subtarefas:subs,observacoes:obs,atualizadoEm:serverTimestamp()};
-  const novo=porteAuto(subs.length);
+  const novo=porteCongelado(a)?'':porteAuto(subs.length);
   if(novo&&a.porte!==novo){upd.porte=novo;upd.pontos=PORTES[novo];upd.porteDefinidoEm=hojeStr();}
   try{
     await updateDoc(doc(db,'atividades',a._id),upd);
