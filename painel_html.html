@@ -1068,7 +1068,9 @@ function cardAtividade(a){
   el.querySelector('button').onclick=()=>abrirAtividade(a._id);
   return el;
 }
-// Monta o update de uma troca de status: fecha pausa aberta e marca/limpa a data de conclusão
+// Monta o update de uma troca de status: fecha pausa aberta, marca/limpa a data de conclusão e acerta o porte
+// com a mesma regra do salvar do modal: só a concluída que continua concluída mantém o porte congelado;
+// reaberta volta pro automático, e quem conclui fixa o porte da contagem de subtarefas do momento.
 function transicaoStatus(a,novo){
   const upd={status:novo,feito:novo==='Concluído',atualizadoEm:serverTimestamp()};
   if(a.status==='Pausado'&&novo!=='Pausado'){
@@ -1078,6 +1080,8 @@ function transicaoStatus(a,novo){
   }
   if(novo==='Concluído'&&a.status!=='Concluído')upd.concluidoEm=hojeStr();
   if(novo!=='Concluído'&&a.status==='Concluído')upd.concluidoEm='';
+  const porte=(novo==='Concluído'&&porteCongelado(a))?'':porteAuto((a.subtarefas||[]).length);
+  if(porte&&a.porte!==porte){upd.porte=porte;upd.pontos=PORTES[porte];upd.porteDefinidoEm=hojeStr();}
   return upd;
 }
 window.toggleConcluido=async function(id){
